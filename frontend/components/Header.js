@@ -16,7 +16,7 @@ export default async function Header() {
           </Link>
           <div className="flex flex-wrap items-center gap-4">
             <a
-              href="https://t.me/futbolxabarlari"
+              href="https://t.me/futbolxabarida"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-sm text-slate-300 hover:text-sky-400 transition-colors"

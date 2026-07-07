@@ -58,7 +58,7 @@ const siteJsonLd = {
         width: 512,
         height: 512,
       },
-      sameAs: ["https://t.me/futbolxabarlari"],
+      sameAs: ["https://t.me/futbolxabarida"],
     },
     {
       "@type": "WebSite",
@@ -110,12 +110,12 @@ export default function RootLayout({ children }) {
             </a>
             <span>•</span>
             <a
-              href="https://t.me/futbolxabarlari"
+              href="https://t.me/futbolxabarida"
               target="_blank"
               rel="noopener noreferrer"
               className="text-slate-400 hover:text-sky-400 transition-colors"
             >
-              📢 Telegram Kanal (@futbolxabarlari)
+              📢 Telegram Kanal (@futbolxabarida)
             </a>
             <span>•</span>
             <a

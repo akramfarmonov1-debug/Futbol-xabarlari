@@ -9,8 +9,8 @@ const CONTACTS = [
   {
     icon: "📢",
     title: "Telegram kanal",
-    value: "@futbolxabarlari",
-    href: "https://t.me/futbolxabarlari",
+    value: "@futbolxabarida",
+    href: "https://t.me/futbolxabarida",
     note: "Yangiliklar va e'lonlar",
   },
   {

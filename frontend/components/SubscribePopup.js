@@ -67,7 +67,7 @@ export default function SubscribePopup() {
 
         <div className="flex flex-wrap gap-2">
           <a
-            href="https://t.me/futbolxabarlari"
+            href="https://t.me/futbolxabarida"
             target="_blank"
             rel="noopener noreferrer"
             onClick={close}

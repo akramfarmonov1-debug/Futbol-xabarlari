@@ -39,7 +39,7 @@ export default function AboutPage() {
           hisobidan rivojlantiriladi. Yangiliklardan birinchilardan bo&apos;lib xabar topish
           uchun{" "}
           <a
-            href="https://t.me/futbolxabarlari"
+            href="https://t.me/futbolxabarida"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sky-400 hover:underline"
