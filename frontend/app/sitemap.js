@@ -31,11 +31,16 @@ export default async function sitemap() {
     priority: 0.8,
   }));
 
-  const staticUrls = ["/haqida", "/aloqa", "/maxfiylik"].map((path) => ({
+  const staticUrls = [
+    { path: "/jadval", changeFrequency: "hourly", priority: 0.7 },
+    { path: "/haqida", changeFrequency: "monthly", priority: 0.4 },
+    { path: "/aloqa", changeFrequency: "monthly", priority: 0.4 },
+    { path: "/maxfiylik", changeFrequency: "monthly", priority: 0.4 },
+  ].map(({ path, changeFrequency, priority }) => ({
     url: `${SITE_URL}${path}`,
     lastModified: new Date(),
-    changeFrequency: "monthly",
-    priority: 0.4,
+    changeFrequency,
+    priority,
   }));
 
   return [

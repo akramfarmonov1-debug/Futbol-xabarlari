@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ArticleCard from "../components/ArticleCard";
 import AdPlaceholder from "../components/AdPlaceholder";
+import LiveScores from "../components/LiveScores";
 import { apiGet } from "../lib/api";
 
 export default async function HomePage() {
@@ -50,6 +51,8 @@ export default async function HomePage() {
       </div>
 
       <aside className="space-y-8">
+        <LiveScores />
+
         <section>
           <h2 className="mb-3 font-bold">🔥 Top 10 kunlik</h2>
           <div className="space-y-2">

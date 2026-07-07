@@ -21,6 +21,11 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "admin-token-o'zgartiring")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "")  # masalan: @ai_news_uz
 
+# Jonli natijalar va turnir jadvali uchun football-data.org API kaliti.
+# Bepul tarif: football-data.org/client/register (10 so'rov/daqiqa).
+# Bo'sh bo'lsa — "Bugungi o'yinlar" va "Jadval" bloklari yashiriladi.
+FOOTBALL_DATA_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")
+
 
 def _bool(name: str, default: str) -> bool:
     return os.getenv(name, default).strip().lower() in ("1", "true", "yes", "ha")

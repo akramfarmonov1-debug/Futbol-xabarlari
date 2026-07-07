@@ -45,6 +45,12 @@ export default async function Header() {
         </div>
 
         <nav className="flex flex-wrap gap-2 text-sm">
+          <Link
+            href="/jadval"
+            className="rounded-full border border-green-700 bg-green-500/10 px-3 py-1 font-semibold text-green-400 hover:border-green-500 hover:text-white"
+          >
+            🏆 Jadval
+          </Link>
           {categories.map((cat) => (
             <Link
               key={cat.slug}

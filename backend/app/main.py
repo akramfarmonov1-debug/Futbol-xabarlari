@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import FRONTEND_ORIGIN, MEDIA_DIR
 from .database import Base, SessionLocal, engine
-from .routers import admin, categories, news
+from .routers import admin, categories, news, scores
 from .seed import seed_categories
 from .pipeline import run_pipeline
 from .bot.bot import main as run_bot
@@ -76,7 +76,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN, "http://localhost:3000", "https://yangi18.vercel.app"],
+    allow_origins=[
+        FRONTEND_ORIGIN,
+        "http://localhost:3000",
+        "https://futbolxabar.uz",
+        "https://www.futbolxabar.uz",
+        "https://futbol-xabarlari.vercel.app",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -85,6 +91,7 @@ app.add_middleware(
 app.include_router(news.router)
 app.include_router(categories.router)
 app.include_router(admin.router)
+app.include_router(scores.router)
 
 # Generatsiya qilingan rasmlar (IMAGE_GENERATION=true rejimi uchun)
 Path(MEDIA_DIR).mkdir(parents=True, exist_ok=True)
