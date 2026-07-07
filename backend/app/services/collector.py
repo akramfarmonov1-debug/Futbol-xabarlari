@@ -15,11 +15,26 @@ from sqlalchemy.orm import Session
 from ..models import Article
 from ..utils import title_hash
 
+# "keywords" — ixtiyoriy regex: faqat mos kelgan yozuvlar olinadi
+# (aralash sport manbalaridan faqat futbolni ajratish uchun).
+FUTBOL_KEYWORDS = (
+    r"футбол|futbol|суперлига|superliga|\bпфл\b|\bpfl\b"
+    r"|чемпионлар лигаси|chempionlar ligasi|мундиал|mundial|жч-?\d|jch-?\d"
+    r"|уефа|uefa|фифа|fifa|трансфер|transfer"
+    # mashhur klublar (o'zbek matbuotida tez-tez uchraydigan yozilishlar)
+    r"|пахтакор|paxtakor|бунёдкор|bunyodkor|насаф|nasaf|навбаҳор|navbahor"
+    r"|барселона|barselona|реал мадрид|real madrid|манчестер|manchester"
+    r"|ливерпул|liverpul|арсенал|arsenal|челси|chelsi|ювентус|yuventus"
+    r"|[«\"“„]милан|[«\"“„]milan|байерн|bayern|псж|psj"
+)
+
 FEEDS = [
     {"name": "BBC Sport Football", "url": "https://feeds.bbci.co.uk/sport/football/rss.xml"},
     {"name": "The Guardian Football", "url": "https://www.theguardian.com/football/rss"},
     {"name": "Sky Sports Football", "url": "https://www.skysports.com/rss/12040"},
     {"name": "ESPN Soccer", "url": "https://www.espn.com/espn/rss/soccer/news"},
+    # O'zbek manbalari — aralash sport, futbol filtri bilan
+    {"name": "Sports.uz", "url": "https://sports.uz/rss", "keywords": FUTBOL_KEYWORDS},
 ]
 
 ATOM = "{http://www.w3.org/2005/Atom}"
@@ -133,6 +148,14 @@ def collect_news(db: Session, per_feed: int = 5) -> list[dict]:
             except Exception as error:
                 print(f"  ✗ Manba o'qilmadi ({feed['name']}): {error}")
                 continue
+
+            # Aralash sport manbasi bo'lsa, faqat futbolga oid yozuvlarni qoldiramiz
+            keywords = feed.get("keywords")
+            if keywords:
+                entries = [
+                    e for e in entries
+                    if re.search(keywords, f"{e['title']} {e['summary']}", re.IGNORECASE)
+                ]
 
             for entry in entries[:per_feed]:
                 url, title = entry["url"], entry["title"]
