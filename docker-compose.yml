@@ -1,0 +1,115 @@
+# Futbol Xabar — to'liq stack bitta buyruq bilan:
+#   cp .env.example .env   # kalitlarni to'ldiring
+#   docker compose up -d --build
+#
+# Servislar:
+#   db        — PostgreSQL 16
+#   backend   — FastAPI (http://localhost:8000, hujjatlar: /docs)
+#   pipeline  — AI agent: har PIPELINE_INTERVAL soniyada yangiliklarni yig'adi
+#   frontend  — Next.js sayt (http://localhost:3000)
+#   bot       — Telegram bot (TELEGRAM_BOT_TOKEN bo'lsa ishlaydi)
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: futbolxabar
+      POSTGRES_USER: futbolxabar
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-futbolxabar_parol}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U futbolxabar -d futbolxabar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://futbolxabar:${POSTGRES_PASSWORD:-futbolxabar_parol}@db:5432/futbolxabar
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-admin-token-o'zgartiring}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
+      MEDIA_DIR: /app/media
+      BACKEND_PUBLIC_URL: ${BACKEND_PUBLIC_URL:-http://localhost:8000}
+    volumes:
+      - media:/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  pipeline:
+    build: ./backend
+    command: >
+      sh -c "while true; do
+        python -m app.pipeline;
+        echo \"⏳ Keyingi yig'ish: $${PIPELINE_INTERVAL:-3600} soniyadan so'ng\";
+        sleep $${PIPELINE_INTERVAL:-3600};
+      done"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://futbolxabar:${POSTGRES_PASSWORD:-futbolxabar_parol}@db:5432/futbolxabar
+      AI_PROVIDER: ${AI_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}
+      AUTO_PUBLISH: ${AUTO_PUBLISH:-true}
+      AUTO_PUBLISH_MIN_IMPORTANCE: ${AUTO_PUBLISH_MIN_IMPORTANCE:-1}
+      AUTO_TELEGRAM: ${AUTO_TELEGRAM:-true}
+      AUTO_TELEGRAM_MIN_IMPORTANCE: ${AUTO_TELEGRAM_MIN_IMPORTANCE:-4}
+      PIPELINE_INTERVAL: ${PIPELINE_INTERVAL:-3600}
+      IMAGE_GENERATION: ${IMAGE_GENERATION:-false}
+      GEMINI_IMAGE_MODEL: ${GEMINI_IMAGE_MODEL:-gemini-3.1-flash-image}
+      MEDIA_DIR: /app/media
+      BACKEND_PUBLIC_URL: ${BACKEND_PUBLIC_URL:-http://localhost:8000}
+    volumes:
+      - media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Brauzer backend'ga shu manzildan kiradi — serverga qo'ysangiz
+        # https://api.sizning-domen.uz kabi qiymat bering
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    environment:
+      # SSR konteyner ichidan backend'ga ichki tarmoq orqali murojaat qiladi
+      API_URL_INTERNAL: http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  bot:
+    build: ./bot
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      API_URL: http://backend:8000
+      SITE_URL: ${SITE_URL:-http://localhost:3000}
+      BOT_DB_PATH: /app/data/bot.db
+    volumes:
+      - botdata:/app/data
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  botdata:
+  media:
