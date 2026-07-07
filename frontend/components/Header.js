@@ -24,7 +24,7 @@ export default async function Header() {
               📢 Telegram Kanal
             </a>
             <a
-              href="https://t.me/Futbolxabar_bot"
+              href="https://t.me/Futbolxabari_bot"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-sm text-slate-300 hover:text-green-400 transition-colors"

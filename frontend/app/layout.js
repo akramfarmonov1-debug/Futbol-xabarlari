@@ -119,12 +119,12 @@ export default function RootLayout({ children }) {
             </a>
             <span>•</span>
             <a
-              href="https://t.me/Futbolxabar_bot"
+              href="https://t.me/Futbolxabari_bot"
               target="_blank"
               rel="noopener noreferrer"
               className="text-slate-400 hover:text-green-400 transition-colors"
             >
-              🤖 Telegram Bot (@Futbolxabar_bot)
+              🤖 Telegram Bot (@Futbolxabari_bot)
             </a>
           </div>
           © {new Date().getFullYear()} Futbol Xabar (futbolxabar.uz) — jahon futboli yangiliklari o&apos;zbek tilida

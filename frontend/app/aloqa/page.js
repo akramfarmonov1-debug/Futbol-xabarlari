@@ -16,8 +16,8 @@ const CONTACTS = [
   {
     icon: "🤖",
     title: "Telegram bot",
-    value: "@Futbolxabar_bot",
-    href: "https://t.me/Futbolxabar_bot",
+    value: "@Futbolxabari_bot",
+    href: "https://t.me/Futbolxabari_bot",
     note: "Yangiliklarni botda o'qish",
   },
   {
