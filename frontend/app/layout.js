@@ -41,6 +41,9 @@ export const metadata = {
     title: "Futbol Xabar",
     statusBarStyle: "black-translucent",
   },
+  verification: {
+    google: "--9CvR3hkmw5cyoj7o1Mi9IDD8m-Mr_D1h0hXx2I510",
+  },
 };
 
 const siteJsonLd = {
