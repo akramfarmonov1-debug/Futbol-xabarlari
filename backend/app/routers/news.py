@@ -22,7 +22,7 @@ def published(db: Session):
 def latest_news(
     db: Session = Depends(get_db),
     kategoriya: str | None = None,
-    limit: int = Query(default=20, le=100),
+    limit: int = Query(default=20, le=1000),
     offset: int = 0,
 ):
     """Eng so'nggi yangiliklar (ixtiyoriy kategoriya filtri bilan)."""
