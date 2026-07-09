@@ -3,6 +3,7 @@ import Header from "../components/Header";
 import PwaRegister from "../components/PwaRegister";
 import SubscribePopup from "../components/SubscribePopup";
 import { SITE_URL, SITE_NAME, SITE_ALT_NAMES } from "../lib/site";
+import Script from "next/script";
 
 const DESCRIPTION =
   "Jahon futbolining eng muhim yangiliklari — qisqa, tushunarli va o'zbek tilida. Premyer-liga, La Liga, Chempionlar ligasi, transferlar va O'zbekiston futboli.";
@@ -14,7 +15,6 @@ export const metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description: DESCRIPTION,
-  verification: { google: "--9CvR3hkmw5cyoj7o1Mi9IDD8m-Mr_D1h0hXx2I510" },
   applicationName: SITE_NAME,
   alternates: {
     canonical: "/",
@@ -41,6 +41,9 @@ export const metadata = {
     capable: true,
     title: "Futbol Xabar",
     statusBarStyle: "black-translucent",
+  },
+  verification: {
+    google: "--9CvR3hkmw5cyoj7o1Mi9IDD8m-Mr_D1h0hXx2I510",
   },
 };
 
@@ -87,9 +90,26 @@ export const viewport = {
 
 
 export default function RootLayout({ children }) {
+  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   return (
     <html lang="uz">
       <body>
+        {gaId && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${gaId}');
+              `}
+            </Script>
+          </>
+        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
