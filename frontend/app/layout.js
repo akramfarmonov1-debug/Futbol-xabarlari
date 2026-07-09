@@ -14,6 +14,7 @@ export const metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description: DESCRIPTION,
+  verification: { google: "--9CvR3hkmw5cyoj7o1Mi9IDD8m-Mr_D1h0hXx2I510" },
   applicationName: SITE_NAME,
   alternates: {
     canonical: "/",
