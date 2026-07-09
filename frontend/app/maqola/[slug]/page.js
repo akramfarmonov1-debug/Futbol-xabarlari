@@ -69,95 +69,131 @@ export default async function ArticlePage({ params }) {
 
   if (!article) {
     return (
-      <div className="py-20 text-center text-slate-400">
-        Maqola topilmadi. <Link href="/" className="text-green-400">Bosh sahifaga qaytish</Link>
+      <div className="py-24 text-center text-slate-400">
+        <div className="text-4xl mb-4">⚠️</div>
+        <p className="mb-4 font-semibold text-white">Maqola topilmadi.</p>
+        <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300">
+          ← Bosh sahifaga qaytish
+        </Link>
       </div>
     );
   }
 
   const stars = "⭐".repeat(Math.max(1, Math.min(5, article.importance)));
   const date = article.published_at
-    ? new Date(article.published_at).toLocaleString("uz-UZ")
+    ? new Date(article.published_at).toLocaleString("uz-UZ", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
     : "";
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(`${SITE_URL}/maqola/${article.slug}`)}&text=${encodeURIComponent(article.title)}`;
 
   return (
-    <article className="mx-auto max-w-3xl py-8">
+    <article className="mx-auto max-w-2xl py-4 sm:py-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(articleJsonLd(article)),
         }}
       />
-      <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-slate-400">
-        {article.category && (
-          <Link
-            href={`/kategoriya/${article.category.slug}`}
-            className="rounded-full bg-green-500/10 px-3 py-1 font-semibold text-green-400"
-          >
-            {article.category.name}
-          </Link>
-        )}
-        <span>{stars}</span>
-        <span>{date}</span>
+      
+      {/* Category & Date Metadata */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          {article.category && (
+            <Link
+              href={`/kategoriya/${article.category.slug}`}
+              className="rounded-full bg-emerald-500/10 px-3 py-1 font-bold text-[10px] uppercase tracking-wider text-emerald-400 border border-emerald-500/10"
+            >
+              {article.category.name}
+            </Link>
+          )}
+          <span className="text-[10px] font-medium tracking-wide">{stars}</span>
+        </div>
+        <span className="text-slate-500 font-semibold">{date}</span>
       </div>
 
-      <h1 className="mb-4 text-3xl font-bold leading-tight">{article.title}</h1>
+      {/* Main Title */}
+      <h1 className="mb-6 text-2xl sm:text-3xl font-extrabold leading-tight text-white tracking-tight">
+        {article.title}
+      </h1>
 
+      {/* Article Cover Image */}
       {article.image_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={article.image_url} alt="" className="mb-6 w-full rounded-xl object-cover" />
+        <div className="relative mb-6 overflow-hidden rounded-2xl border border-slate-900 aspect-video w-full bg-slate-950">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={article.image_url} alt={article.title} className="h-full w-full object-cover" />
+        </div>
       )}
 
-      <p className="mb-6 border-l-4 border-green-500 pl-4 text-lg leading-relaxed text-slate-200">
+      {/* Summary Highlight (Blockquote) */}
+      <div className="mb-6 border-l-4 border-emerald-500 bg-emerald-950/10 p-4.5 rounded-r-2xl text-[14px] sm:text-[15px] font-medium leading-relaxed text-slate-200">
         {article.summary}
-      </p>
+      </div>
 
-      <div className="prose-invert mb-6 space-y-4 leading-relaxed text-slate-300">
+      {/* Body Content Paragraphs */}
+      <div className="mb-8 space-y-5 text-sm sm:text-[15px] leading-relaxed text-slate-300">
         {article.content.split(/\n\s*\n/).map((paragraph, i) => (
           <p key={i}>{paragraph}</p>
         ))}
       </div>
 
+      {/* AI Explainer Box ("Bu nima degani?") */}
       {article.practical_note && (
-        <div className="mb-6 rounded-xl border border-green-900 bg-green-500/5 p-5">
-          <div className="mb-1 text-sm font-bold text-green-400">💡 BU NIMA DEGANI?</div>
-          <p className="text-slate-200">{article.practical_note}</p>
+        <div className="mb-8 rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/20 to-slate-950/40 p-5 backdrop-blur-sm">
+          <div className="mb-2 flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-emerald-400">
+            <span>💡</span>
+            <span>Bu Nima Degani?</span>
+          </div>
+          <p className="text-xs sm:text-sm leading-relaxed text-slate-300 font-medium">
+            {article.practical_note}
+          </p>
         </div>
       )}
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      {/* Tags List */}
+      <div className="mb-8 flex flex-wrap gap-2">
         {(article.tags || []).map((tag) => (
           <Link
             key={tag}
             href={`/qidiruv?q=${encodeURIComponent(tag)}`}
-            className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300 hover:bg-green-600 hover:text-white"
+            className="rounded-full border border-slate-900 bg-slate-950/60 px-3 py-1.5 text-[10px] font-bold text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500 hover:text-slate-950 transition-all duration-200"
           >
             #{tag}
           </Link>
         ))}
       </div>
 
+      {/* Advert Place */}
       <div className="mb-8">
         <AdPlaceholder type="banner" />
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 border-t border-slate-800 pt-5 text-sm">
+      {/* Actions and Footer (Share/Source) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-slate-900 pt-6">
         <a
           href={article.original_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-green-400 hover:underline"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-emerald-400 transition-colors"
         >
-          🔗 Asl manba ({article.source_name})
+          <span>🔗</span>
+          <span>Asl manba ({article.source_name})</span>
         </a>
+        
         <a
           href={shareUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-lg bg-sky-600 px-3 py-1.5 text-white hover:bg-sky-500"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 hover:bg-sky-400 px-5 py-2.5 text-xs font-bold text-white transition-all duration-200 shadow-md shadow-sky-500/10 active:scale-[0.98]"
         >
-          📤 Telegramda ulashish
+          <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.24-5.54 3.65-.52.36-.99.53-1.4.52-.46-.01-1.34-.26-1.99-.47-.8-.26-1.43-.4-1.38-.85.03-.23.35-.47.96-.71 3.76-1.64 6.27-2.72 7.53-3.25 3.58-1.51 4.32-1.77 4.81-1.78.11 0 .35.03.5.16.13.12.17.29.18.41-.01.08-.01.22-.02.26z"/>
+          </svg>
+          Telegramda ulashish
         </a>
       </div>
     </article>

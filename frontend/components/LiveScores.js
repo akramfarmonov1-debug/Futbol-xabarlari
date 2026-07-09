@@ -16,24 +16,35 @@ function timeUz(iso) {
 function MatchRow({ m }) {
   const played = m.home_score !== null && m.away_score !== null;
   return (
-    <div className="flex items-center gap-2 py-2 text-sm">
-      <span className="flex-1 truncate text-right text-slate-200">{m.home}</span>
-      <span className="min-w-[52px] text-center">
+    <div className="flex items-center justify-between py-2.5 hover:bg-slate-900/20 px-1 rounded-lg transition-colors duration-150">
+      {/* Home Team */}
+      <span className="w-[42%] truncate text-right text-xs font-semibold text-slate-200" title={m.home}>
+        {m.home}
+      </span>
+      
+      {/* Score / Time Box */}
+      <span className="w-[16%] flex justify-center">
         {played ? (
           <span
-            className={
+            className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-bold ${
               m.is_live
-                ? "rounded bg-green-500/20 px-2 py-0.5 font-bold text-green-400"
-                : "font-bold text-white"
-            }
+                ? "bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse"
+                : "bg-slate-800 text-slate-200"
+            }`}
           >
-            {m.home_score}:{m.away_score}
+            {m.home_score} : {m.away_score}
           </span>
         ) : (
-          <span className="text-xs text-slate-500">{timeUz(m.kickoff)}</span>
+          <span className="rounded bg-slate-900/60 border border-slate-800/80 px-2 py-0.5 text-[10px] font-bold text-emerald-400 tracking-wider">
+            {timeUz(m.kickoff)}
+          </span>
         )}
       </span>
-      <span className="flex-1 truncate text-slate-200">{m.away}</span>
+      
+      {/* Away Team */}
+      <span className="w-[42%] truncate text-left text-xs font-semibold text-slate-200" title={m.away}>
+        {m.away}
+      </span>
     </div>
   );
 }
@@ -41,24 +52,29 @@ function MatchRow({ m }) {
 export default async function LiveScores() {
   const groups = await apiGet("/api/scores/today");
 
-  // API kaliti yo'q yoki bugun o'yin yo'q — blokni umuman ko'rsatmaymiz
   if (!groups || groups.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-bold">⚽ Bugungi o&apos;yinlar</h2>
-        <a href="/jadval" className="text-xs text-green-400 hover:underline">
-          Jadval →
+    <section className="rounded-2xl border border-slate-900 bg-slate-950/40 p-4 backdrop-blur-md">
+      <div className="mb-4 flex items-center justify-between border-b border-slate-900/80 pb-2">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-300">⚽ Bugungi O&apos;yinlar</h2>
+        </div>
+        <a href="/jadval" className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300 transition-colors">
+          Jadvallar →
         </a>
       </div>
       <div className="space-y-4">
         {groups.map((g) => (
-          <div key={g.code}>
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {g.competition}
+          <div key={g.code} className="border-b border-slate-900/40 last:border-0 pb-3 last:pb-0">
+            <div className="mb-2 text-[9px] font-bold uppercase tracking-widest text-emerald-500/70">
+              🏆 {g.competition}
             </div>
-            <div className="divide-y divide-slate-800/60">
+            <div className="space-y-1">
               {g.matches.map((m, i) => (
                 <MatchRow key={i} m={m} />
               ))}

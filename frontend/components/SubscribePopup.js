@@ -11,7 +11,6 @@ export default function SubscribePopup() {
   const [installEvent, setInstallEvent] = useState(null);
 
   useEffect(() => {
-    // PWA sifatida ochilgan bo'lsa popup kerak emas
     if (window.matchMedia("(display-mode: standalone)").matches) return;
 
     const closedAt = Number(localStorage.getItem(STORAGE_KEY) || 0);
@@ -46,41 +45,53 @@ export default function SubscribePopup() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 left-4 z-50 sm:left-auto sm:w-96">
-      <div className="relative rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl shadow-black/50">
+    <div className="fixed bottom-16 md:bottom-6 right-4 left-4 z-50 sm:left-auto sm:w-[380px] animate-fade-in-up">
+      <div className="relative rounded-2xl border border-slate-800 bg-slate-950/90 p-5 shadow-2xl shadow-black/80 backdrop-blur-md">
+        {/* Close Button */}
         <button
           onClick={close}
           aria-label="Yopish"
-          className="absolute right-3 top-3 rounded-full px-2 py-0.5 text-slate-500 hover:bg-slate-800 hover:text-white"
+          className="absolute right-3.5 top-3.5 rounded-full p-1 text-slate-500 hover:bg-slate-900 hover:text-white transition-colors duration-200"
         >
-          ✕
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
         </button>
 
-        <div className="mb-2 flex items-center gap-2">
-          <img src="/logo.svg" alt="Futbol Xabar" width={36} height={36} />
-          <p className="font-bold">futbol yangiliklaridan orqada qolmang!</p>
+        {/* Brand Header */}
+        <div className="mb-3 flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-md shadow-emerald-500/10">
+            <img src="/logo.svg" alt="Logo" width={26} height={26} className="brightness-0 invert" />
+          </div>
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">Futbol Yangiliklari</h4>
+            <p className="text-sm font-bold text-white leading-tight">Orqada qolib ketmang!</p>
+          </div>
         </div>
-        <p className="mb-4 text-sm text-slate-400">
-          Eng muhim jahon futboli yangiliklari — har kuni, o&apos;zbek
-          tilida. Telegram kanalimizga obuna bo&apos;ling.
+
+        {/* Text */}
+        <p className="mb-4 text-xs leading-relaxed text-slate-400">
+          Eng so&apos;nggi jahon futboli xabarlari — tushunarli, qisqa va o&apos;zbek tilida. Obuna bo&apos;ling va birinchilardan bo&apos;lib bilib oling.
         </p>
 
-        <div className="flex flex-wrap gap-2">
+        {/* Actions */}
+        <div className="flex flex-col gap-2">
           <a
             href="https://t.me/futbolxabarida"
             target="_blank"
             rel="noopener noreferrer"
             onClick={close}
-            className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400"
+            className="flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-4 py-2.5 text-xs font-bold text-white hover:bg-sky-400 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
           >
-            📢 Kanalga obuna bo&apos;lish
+            📢 Telegram kanalga a&apos;zo bo&apos;lish
           </a>
+          
           {installEvent && (
             <button
               onClick={install}
-              className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:border-green-500 hover:text-white"
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:border-emerald-500/30 hover:text-white hover:bg-slate-900 transition-all duration-200"
             >
-              📲 Ilovani o&apos;rnatish
+              📲 Ilovani o&apos;rnatish (PWA)
             </button>
           )}
         </div>
