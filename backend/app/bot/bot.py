@@ -62,19 +62,35 @@ def article_text(article: dict) -> str:
     stars = "⭐" * max(1, min(5, article.get("importance", 3)))
     category = (article.get("category") or {}).get("name", "AI")
     return (
-        f"<b>{html.escape(article['title'])}</b>\n\n"
+        f"⚽️ <b>{html.escape(article['title'])}</b>\n\n"
         f"{html.escape(article['summary'])}\n\n"
-        f"💡 <i>{html.escape(article.get('practical_note', ''))}</i>\n\n"
-        f"📂 {html.escape(category)} | {stars}\n"
-        f"🔗 <a href=\"{article['original_url']}\">Asl manba</a> | "
-        f"<a href=\"{SITE_URL}/maqola/{article['slug']}\">Saytda o'qish</a>"
+        f"💡 <b>Nega muhim?</b>\n"
+        f"<i>{html.escape(article.get('practical_note', ''))}</i>\n\n"
+        f"📂 {html.escape(category)}  •  {stars}"
     )
 
 
-def save_button(article: dict) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="⭐ Saqlash", callback_data=f"save:{article['slug']}")
-    ]])
+def article_buttons(article: dict) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📖 Saytda o'qish",
+                    url=f"{SITE_URL}/maqola/{article['slug']}",
+                ),
+                InlineKeyboardButton(
+                    text="🔗 Asl manba",
+                    url=article["original_url"],
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⭐ Saqlash",
+                    callback_data=f"save:{article['slug']}",
+                )
+            ],
+        ]
+    )
 
 
 async def send_articles(message: Message, articles: list[dict], empty_text: str, limit: int = 5):
@@ -85,8 +101,8 @@ async def send_articles(message: Message, articles: list[dict], empty_text: str,
         await message.answer(
             article_text(article),
             parse_mode="HTML",
-            reply_markup=save_button(article),
-            disable_web_page_preview=False,
+            reply_markup=article_buttons(article),
+            disable_web_page_preview=True,
         )
 
 

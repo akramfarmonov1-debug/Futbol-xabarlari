@@ -1,6 +1,7 @@
 """Telegram kanaliga post yuborish (Bot API orqali)."""
 
 import html
+import re
 
 import httpx
 
@@ -8,34 +9,107 @@ from ..config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID, FRONTEND_ORIGIN
 from ..models import Article
 
 
-def format_post(article: Article, max_caption_len: int = None) -> str:
-    stars = "⭐" * max(1, min(5, article.importance))
-    tags = " ".join(f"#{t.replace(' ', '_')}" for t in (article.tags or [])[:5])
-    category = article.category.name if article.category else "AI"
-    
-    title = article.title
-    summary = article.summary
-    practical_note = article.practical_note or ""
+def _truncate(text: str, limit: int) -> str:
+    clean = re.sub(r"\s+", " ", text or "").strip()
+    if len(clean) <= limit:
+        return clean
+    shortened = clean[: max(1, limit - 1)].rsplit(" ", 1)[0].rstrip(".,;:")
+    return f"{shortened}…"
 
-    # Caption cheklovini hisobga olish (HTML teglar buzilmasligi uchun)
-    if max_caption_len:
-        # Havolalar, teglar va formatlar uchun taxminan 450 belgi zaxira qilamiz
-        reserved_len = 450
-        available_len = max_caption_len - reserved_len - len(title) - len(practical_note) - len(category)
-        if available_len < 100:
-            available_len = 100
-        if len(summary) > available_len:
-            summary = summary[:available_len - 3] + "..."
 
-    return (
-        f"<b>{html.escape(title)}</b>\n\n"
-        f"{html.escape(summary)}\n\n"
-        f"💡 <i>{html.escape(practical_note)}</i>\n\n"
-        f"📂 {html.escape(category)} | Ahamiyati: {stars}\n"
-        f"🔗 <a href=\"{article.original_url}\">Asl manba</a> | "
-        f"<a href=\"{FRONTEND_ORIGIN}/maqola/{article.slug}\">Batafsil o'qish</a>\n"
-        f"{tags}"
+def _hashtag(value: str) -> str:
+    """Erkin AI tegini Telegram uchun o'qilishi oson CamelCase hashtag qiladi."""
+    value = re.sub(r"^#+", "", str(value or "").strip())
+    words = re.findall(r"[^\W_]+", value.replace("’", "").replace("'", ""), re.UNICODE)
+    if not words:
+        return ""
+    tag = "".join(word[:1].upper() + word[1:].lower() for word in words)
+    return f"#{tag[:45]}"
+
+
+def _post_tags(article: Article) -> str:
+    category = article.category.name if article.category else "Jahon futboli"
+    values = [category, *(article.tags or [])]
+    tags = []
+    seen = set()
+    for value in values:
+        tag = _hashtag(value)
+        key = tag.casefold()
+        if tag and key not in seen:
+            tags.append(tag)
+            seen.add(key)
+        if len(tags) == 3:
+            break
+    return "  ".join(tags)
+
+
+def _importance_label(importance: int) -> str:
+    if importance >= 5:
+        return "🔥 <b>ASOSIY XABAR</b>"
+    if importance >= 4:
+        return "⚡️ <b>MUHIM XABAR</b>"
+    return "⚽️ <b>FUTBOL XABARI</b>"
+
+
+def _build_post(article: Article, summary: str, practical_note: str) -> str:
+    category = article.category.name if article.category else "Jahon futboli"
+    source = article.source_name or "Ochiq manba"
+    blocks = [
+        _importance_label(article.importance),
+        f"<b>{html.escape(_truncate(article.title, 220))}</b>",
+        html.escape(summary),
+    ]
+    if practical_note:
+        blocks.append(
+            "💡 <b>Nega muhim?</b>\n"
+            f"<i>{html.escape(practical_note)}</i>"
+        )
+    blocks.extend(
+        [
+            f"🗞 {html.escape(source)}  •  📂 {html.escape(category)}",
+            _post_tags(article),
+        ]
     )
+    return "\n\n".join(block for block in blocks if block)
+
+
+def format_post(article: Article, max_caption_len: int = 1024) -> str:
+    summary_limit = 480 if max_caption_len <= 1024 else 1200
+    note_limit = 220 if max_caption_len <= 1024 else 500
+    summary = _truncate(article.summary, summary_limit)
+    practical_note = _truncate(article.practical_note or "", note_limit)
+    post = _build_post(article, summary, practical_note)
+
+    # Telegram limitni HTML teglar va entity'lar yechilgandan keyin hisoblaydi.
+    def visible_length(value: str) -> int:
+        return len(html.unescape(re.sub(r"<[^>]+>", "", value)))
+
+    overflow = visible_length(post) - max_caption_len
+    if overflow > 0:
+        summary = _truncate(summary, max(120, len(summary) - overflow - 20))
+        post = _build_post(article, summary, practical_note)
+    overflow = visible_length(post) - max_caption_len
+    if overflow > 0 and practical_note:
+        practical_note = _truncate(
+            practical_note,
+            max(80, len(practical_note) - overflow - 20),
+        )
+        post = _build_post(article, summary, practical_note)
+    return post
+
+
+def article_buttons(article: Article) -> dict:
+    return {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "📖 Saytda o'qish",
+                    "url": f"{FRONTEND_ORIGIN}/maqola/{article.slug}",
+                },
+                {"text": "🔗 Asl manba", "url": article.original_url},
+            ]
+        ]
+    }
 
 
 def send_to_channel(article: Article) -> None:
@@ -51,6 +125,7 @@ def send_to_channel(article: Article) -> None:
             "photo": article.image_url,
             "caption": text,
             "parse_mode": "HTML",
+            "reply_markup": article_buttons(article),
         }
         response = httpx.post(f"{api}/sendPhoto", json=payload, timeout=30)
     else:
@@ -59,7 +134,8 @@ def send_to_channel(article: Article) -> None:
             "chat_id": TELEGRAM_CHANNEL_ID,
             "text": text,
             "parse_mode": "HTML",
-            "disable_web_page_preview": False,
+            "link_preview_options": {"is_disabled": True},
+            "reply_markup": article_buttons(article),
         }
         response = httpx.post(f"{api}/sendMessage", json=payload, timeout=30)
 
