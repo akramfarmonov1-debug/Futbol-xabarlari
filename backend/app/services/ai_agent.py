@@ -3,6 +3,7 @@ tarjima/moslashtirish, xulosa, SEO sarlavha, teglar, muhimlik bahosi, kategoriya
 
 Provayder .env orqali tanlanadi:
   AI_PROVIDER=gemini  (standart, GEMINI_API_KEY + GEMINI_MODEL)
+  AI_PROVIDER=vertex  (Google ADC/service account + Vertex AI)
   AI_PROVIDER=claude  (ANTHROPIC_API_KEY + CLAUDE_MODEL)
 """
 
@@ -16,6 +17,9 @@ from ..config import (
     CLAUDE_MODEL,
     GEMINI_API_KEY,
     GEMINI_MODEL,
+    GOOGLE_CLOUD_LOCATION,
+    GOOGLE_CLOUD_PROJECT,
+    VERTEX_GEMINI_MODEL,
 )
 
 SYSTEM_PROMPT = """**Rol:** Sen jahon futboli bo'yicha yetakchi o'zbek sport jurnalisti va tahlilchisisan.
@@ -106,6 +110,63 @@ def _analyze_with_gemini(user_text: str) -> dict:
     return json.loads(text)
 
 
+_vertex_credentials = None
+_vertex_project = ""
+
+
+def _analyze_with_vertex(user_text: str) -> dict:
+    """Vertex AI generateContent — ADC/service account bilan autentifikatsiya."""
+    global _vertex_credentials, _vertex_project
+
+    import google.auth
+    from google.auth.transport.requests import Request
+
+    if _vertex_credentials is None:
+        _vertex_credentials, detected_project = google.auth.default(
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        _vertex_project = GOOGLE_CLOUD_PROJECT or detected_project or ""
+
+    if not _vertex_project:
+        raise RuntimeError("GOOGLE_CLOUD_PROJECT aniqlanmadi")
+
+    if not _vertex_credentials.valid:
+        _vertex_credentials.refresh(Request())
+
+    schema = {k: v for k, v in ANALYSIS_SCHEMA.items() if k != "additionalProperties"}
+    url = (
+        "https://aiplatform.googleapis.com/v1/projects/"
+        f"{_vertex_project}/locations/{GOOGLE_CLOUD_LOCATION}/publishers/google/models/"
+        f"{VERTEX_GEMINI_MODEL}:generateContent"
+    )
+    payload = {
+        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "contents": [{"role": "user", "parts": [{"text": user_text}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": schema,
+            "maxOutputTokens": 8192,
+        },
+    }
+    response = httpx.post(
+        url,
+        json=payload,
+        headers={"Authorization": f"Bearer {_vertex_credentials.token}"},
+        timeout=120,
+    )
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Vertex AI xatosi {response.status_code}: {response.text[:300]}"
+        )
+
+    data = response.json()
+    try:
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+    except (KeyError, IndexError):
+        raise RuntimeError(f"Vertex AI javobi kutilmagan formatda: {json.dumps(data)[:300]}")
+    return json.loads(text)
+
+
 def _analyze_with_claude(user_text: str) -> dict:
     """Claude API — strukturali JSON javob bilan."""
     import anthropic  # ixtiyoriy provayder — faqat kerak bo'lganda import qilinadi
@@ -140,6 +201,8 @@ def analyze_news(title: str, content: str, url: str = "", source: str = "") -> d
 
     if AI_PROVIDER == "claude":
         analysis = _analyze_with_claude(user_text)
+    elif AI_PROVIDER == "vertex":
+        analysis = _analyze_with_vertex(user_text)
     else:
         analysis = _analyze_with_gemini(user_text)
 
