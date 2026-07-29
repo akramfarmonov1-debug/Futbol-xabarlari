@@ -35,6 +35,8 @@ services:
         value: "true"
       - key: PIPELINE_INTERVAL
         value: "3600"
+      - key: THESPORTSDB_API_KEY
+        value: "123"
       - key: FRONTEND_ORIGIN
         value: "https://futbolxabar.uz"
 

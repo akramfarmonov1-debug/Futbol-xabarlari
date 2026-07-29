@@ -31,6 +31,10 @@ TELEGRAM_CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "")  # masalan: @ai_news_
 # Bo'sh bo'lsa — "Bugungi o'yinlar" va "Jadval" bloklari yashiriladi.
 FOOTBALL_DATA_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")
 
+# Liga belgilari, bannerlari va qo'shimcha metadata uchun TheSportsDB.
+# "123" — TheSportsDB tomonidan rasmiy taqdim etilgan umumiy bepul V1 kalit.
+THESPORTSDB_API_KEY = os.getenv("THESPORTSDB_API_KEY", "123").strip()
+
 
 def _bool(name: str, default: str) -> bool:
     return os.getenv(name, default).strip().lower() in ("1", "true", "yes", "ha")
