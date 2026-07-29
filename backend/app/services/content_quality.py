@@ -49,6 +49,15 @@ TEXT_REPLACEMENTS = (
     ("Liverpoool", "Liverpul"),
     ("liverpoool", "Liverpul"),
     ("Keysingi", "Keyingi"),
+    ("Arsenali uchun", "Arsenal uchun"),
+    ("Rencers", "Reynjers"),
+    (
+        "Derek MakInnes Reynjers dubligidan oldin o'tkaziladigan uchrashuvda "
+        "maydonda bo'lishi kutilmoqda",
+        "Derek MakInnes diskvalifikatsiyaga qaramay Reynjers o'yinida "
+        "qatnashishi mumkin",
+    ),
+    ("muhim START", "muhim boshlanish"),
     ("Â«", "«"),
     ("Â»", "»"),
     ("Ã©", "é"),
@@ -140,6 +149,26 @@ def analysis_is_publishable(analysis: dict) -> tuple[bool, list[str]]:
     )
     if suspicious.search(f"{title} {summary} {content}"):
         reasons.append("modelning texnik yoki rad javobi aniqlandi")
+
+    allowed_acronyms = {
+        "FIFA",
+        "UEFA",
+        "USMNT",
+        "VAR",
+        "MLS",
+        "PFL",
+        "APL",
+    }
+    unexpected_acronyms = {
+        word
+        for word in re.findall(r"\b[A-Z]{4,}\b", f"{title} {summary} {content}")
+        if word not in allowed_acronyms
+    }
+    if unexpected_acronyms:
+        reasons.append(
+            "keraksiz katta inglizcha so'z: "
+            + ", ".join(sorted(unexpected_acronyms))
+        )
 
     return not reasons, reasons
 

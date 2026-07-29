@@ -83,6 +83,9 @@ class ContentQualityTests(unittest.TestCase):
         invalid = dict(valid, maqola="Juda qisqa.")
         self.assertFalse(analysis_is_publishable(invalid)[0])
 
+        unnatural = dict(valid, maqola=valid["maqola"] + " Bu juda katta HYPE.")
+        self.assertFalse(analysis_is_publishable(unnatural)[0])
+
     def test_category_override(self):
         self.assertEqual(
             infer_category(
