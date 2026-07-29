@@ -8,6 +8,7 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
+from urllib.parse import parse_qs, urlparse
 from xml.etree import ElementTree
 
 import httpx
@@ -136,7 +137,9 @@ def fetch_og_image(url: str) -> str | None:
     (RSS'da rasm bo'lmaganda zaxira usul)."""
     try:
         with httpx.Client(timeout=15, follow_redirects=True, headers=HEADERS) as client:
-            html = client.get(url).text[:200_000]
+            response = client.get(url)
+            response.raise_for_status()
+            html = response.text[:200_000]
     except Exception:
         return None
     for pattern in _OG_PATTERNS:
@@ -144,6 +147,72 @@ def fetch_og_image(url: str) -> str | None:
         if match and match.group(1).startswith("http"):
             return match.group(1)
     return None
+
+
+def _query_width(url: str) -> int | None:
+    try:
+        raw_width = parse_qs(urlparse(url).query).get("width", [None])[0]
+        return int(raw_width) if raw_width else None
+    except (TypeError, ValueError):
+        return None
+
+
+def improve_image_url(
+    image_url: str | None,
+    article_url: str = "",
+    source: str = "",
+) -> str | None:
+    """RSS thumbnailini mavjud bo'lsa katta, maqola darajasidagi rasmga almashtiradi."""
+    if not image_url:
+        return fetch_og_image(article_url) if article_url else None
+
+    host = urlparse(image_url).hostname or ""
+
+    # BBC RSS odatda 240px thumbnail beradi; shu assetning 1200px varianti mavjud.
+    if host == "ichef.bbci.co.uk":
+        upgraded = re.sub(
+            r"/ace/(?:standard|branded_sport)/\d+/",
+            "/ace/branded_sport/1200/",
+            image_url,
+        )
+        if upgraded != image_url:
+            return upgraded
+
+    # Guardian URL imzosi o'lchamga bog'liq. Parametrni qo'lda o'zgartirish
+    # 401 beradi, shuning uchun maqola sahifasidagi imzolangan og:image olinadi.
+    is_small_guardian = (
+        host == "i.guim.co.uk"
+        and (_query_width(image_url) or 0) < 1000
+    )
+    is_sports_thumbnail = (
+        host == "media.sports.uz" and "/thumbnails/" in image_url
+    )
+    if (is_small_guardian or is_sports_thumbnail) and article_url:
+        return fetch_og_image(article_url) or image_url
+
+    return image_url
+
+
+def upgrade_existing_images(db: Session) -> int:
+    """Bazadagi eski past aniqlikdagi rasmlarni bir marta yangilaydi."""
+    changed = 0
+    articles = (
+        db.query(Article)
+        .filter(Article.image_url.isnot(None))
+        .all()
+    )
+    for article in articles:
+        improved = improve_image_url(
+            article.image_url,
+            article.original_url,
+            article.source_name,
+        )
+        if improved and improved != article.image_url:
+            article.image_url = improved
+            changed += 1
+    if changed:
+        db.commit()
+    return changed
 
 
 def collect_news(db: Session, per_feed: int = 5) -> list[dict]:

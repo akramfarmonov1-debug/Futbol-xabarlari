@@ -24,7 +24,11 @@ from .database import Base, SessionLocal, engine
 from .models import Article, Category
 from .seed import seed_categories
 from .services.ai_agent import analyze_news
-from .services.collector import collect_news, fetch_og_image
+from .services.collector import (
+    collect_news,
+    improve_image_url,
+    upgrade_existing_images,
+)
 from .services.image_gen import generate_image
 from .services.runtime_lock import (
     PIPELINE_LOCK_ID,
@@ -55,6 +59,10 @@ def _run_pipeline(per_feed: int = 5) -> int:
         seed_categories(db)
         categories = {c.slug: c for c in db.query(Category).all()}
 
+        upgraded = upgrade_existing_images(db)
+        if upgraded:
+            print(f"🖼 {upgraded} ta eski rasm yuqori sifatli variantga yangilandi.")
+
         print("📡 Yangiliklar yig'ilmoqda...")
         fresh = collect_news(db, per_feed=per_feed)
         print(f"   {len(fresh)} ta yangi yangilik topildi.")
@@ -78,8 +86,12 @@ def _run_pipeline(per_feed: int = 5) -> int:
 
             auto_publish = AUTO_PUBLISH and analysis["ahamiyati"] >= AUTO_PUBLISH_MIN_IMPORTANCE
 
-            # Rasm zanjiri: RSS -> maqola sahifasidan og:image -> (ixtiyoriy) Gemini
-            image_url = news["image_url"] or fetch_og_image(news["url"])
+            # Rasm zanjiri: yuqori sifatli RSS/og:image -> (ixtiyoriy) Gemini
+            image_url = improve_image_url(
+                news["image_url"],
+                news["url"],
+                news["source"],
+            )
             if not image_url and IMAGE_GENERATION:
                 image_url = generate_image(analysis["sarlavha"], slug)
                 if image_url:
