@@ -1,7 +1,12 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function ArticleCard({ article, compact = false }) {
   const stars = "⭐".repeat(Math.max(1, Math.min(5, article.importance)));
+  const readingMinutes = Math.max(
+    1,
+    Math.ceil((article.content || article.summary || "").split(/\s+/).length / 200),
+  );
   const date = article.published_at
     ? new Date(article.published_at).toLocaleDateString("uz-UZ", {
         day: "numeric",
@@ -31,11 +36,12 @@ export default function ArticleCard({ article, compact = false }) {
       {/* Article Image / Gradient placeholder */}
       <Link href={`/maqola/${article.slug}`} className="relative block overflow-hidden aspect-video w-full group">
         {article.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img 
-            src={article.image_url} 
-            alt={article.title} 
-            className="h-full w-full object-cover group-hover:scale-105 transition-all duration-700 ease-out" 
+          <Image
+            src={article.image_url}
+            alt={article.title}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 370px"
+            className="object-cover group-hover:scale-105 transition-all duration-700 ease-out"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-950/40 to-slate-950 text-5xl">
@@ -65,7 +71,9 @@ export default function ArticleCard({ article, compact = false }) {
         </p>
 
         <div className="flex items-center justify-between border-t border-slate-900/80 pt-4 text-xs sm:text-sm font-semibold">
-          <span className="text-slate-500">{date}</span>
+          <span className="text-slate-500">
+            {date} · {readingMinutes} daqiqa
+          </span>
           <Link 
             href={`/maqola/${article.slug}`} 
             className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors duration-200"

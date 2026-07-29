@@ -4,8 +4,9 @@ RSS 2.0 va Atom formatlarini stdlib (xml.etree) bilan o'qiydi —
 tashqi parser kutubxonalariga bog'liq emas.
 """
 
+import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from xml.etree import ElementTree
 
@@ -40,8 +41,10 @@ FEEDS = [
 ATOM = "{http://www.w3.org/2005/Atom}"
 MEDIA = "{http://search.yahoo.com/mrss/}"
 CONTENT_NS = "{http://purl.org/rss/1.0/modules/content/}"
+DC = "{http://purl.org/dc/elements/1.1/}"
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; FutbolXabar/1.0; +https://futbolxabar.uz)"}
+MAX_NEWS_AGE_DAYS = max(1, int(os.getenv("MAX_NEWS_AGE_DAYS", "3")))
 
 
 def _strip_html(text: str) -> str:
@@ -52,11 +55,17 @@ def _parse_date(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        return parsedate_to_datetime(value).replace(tzinfo=None)  # RFC 822 (RSS)
+        parsed = parsedate_to_datetime(value)
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
     except Exception:
         pass
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)  # ISO (Atom)
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is not None:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
     except Exception:
         return None
 
@@ -87,7 +96,11 @@ def _parse_feed(xml_text: str) -> list[dict]:
             "title": (item.findtext("title") or "").strip(),
             "url": (item.findtext("link") or "").strip(),
             "summary": _strip_html(raw_html),
-            "published": _parse_date(item.findtext("pubDate")),
+            "published": _parse_date(
+                item.findtext("pubDate")
+                or item.findtext(f"{DC}date")
+                or item.findtext("date")
+            ),
             "image": _first_image(item, raw_html),
         })
 
@@ -137,6 +150,7 @@ def collect_news(db: Session, per_feed: int = 5) -> list[dict]:
     """RSS/Atom manbalardan yangi (bazada yo'q) yangiliklarni qaytaradi."""
     existing_urls = {u for (u,) in db.query(Article.original_url).all()}
     existing_hashes = {title_hash(t) for (t,) in db.query(Article.original_title).all()}
+    cutoff = datetime.utcnow() - timedelta(days=MAX_NEWS_AGE_DAYS)
 
     fresh: list[dict] = []
     with httpx.Client(timeout=20, follow_redirects=True, headers=HEADERS) as client:
@@ -157,9 +171,15 @@ def collect_news(db: Session, per_feed: int = 5) -> list[dict]:
                     if re.search(keywords, f"{e['title']} {e['summary']}", re.IGNORECASE)
                 ]
 
+            entries.sort(
+                key=lambda entry: entry["published"] or datetime.min,
+                reverse=True,
+            )
             for entry in entries[:per_feed]:
                 url, title = entry["url"], entry["title"]
                 if not url or not title:
+                    continue
+                if entry["published"] and entry["published"] < cutoff:
                     continue
                 # Dublikat: URL yoki normallashtirilgan sarlavha bo'yicha
                 if url in existing_urls or title_hash(title) in existing_hashes:
@@ -176,4 +196,8 @@ def collect_news(db: Session, per_feed: int = 5) -> list[dict]:
                 existing_urls.add(url)
                 existing_hashes.add(title_hash(title))
 
-    return fresh
+    return sorted(
+        fresh,
+        key=lambda entry: entry["published_at"] or datetime.min,
+        reverse=True,
+    )

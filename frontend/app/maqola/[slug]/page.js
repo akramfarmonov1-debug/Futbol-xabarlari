@@ -1,15 +1,27 @@
+import { cache } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import AdPlaceholder from "../../../components/AdPlaceholder";
 import { apiGet } from "../../../lib/api";
 import { SITE_URL, SITE_NAME } from "../../../lib/site";
 
+const getArticle = cache((slug) => apiGet(`/api/news/${slug}`));
+
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const article = await apiGet(`/api/news/${slug}`);
-  if (!article) return { title: "Maqola topilmadi" };
+  const article = await getArticle(slug);
+  if (!article) {
+    return {
+      title: "Maqola topilmadi",
+      robots: { index: false, follow: false },
+    };
+  }
 
   const title = article.seo_title || article.title;
   const url = `/maqola/${article.slug}`;
+  const image =
+    article.image_url || `${SITE_URL}/maqola/${article.slug}/opengraph-image`;
 
   return {
     title,
@@ -26,60 +38,87 @@ export async function generateMetadata({ params }) {
       publishedTime: article.published_at || article.created_at,
       section: article.category?.name,
       tags: article.tags || [],
+      images: [{ url: image, alt: article.title }],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description: article.summary,
+      images: [image],
     },
   };
 }
 
-function articleJsonLd(article) {
+function structuredData(article) {
   const url = `${SITE_URL}/maqola/${article.slug}`;
   return {
     "@context": "https://schema.org",
-    "@type": "NewsArticle",
-    mainEntityOfPage: { "@type": "WebPage", "@id": url },
-    headline: article.title,
-    description: article.summary,
-    image: [
-      article.image_url?.startsWith("http")
-        ? article.image_url
-        : `${url}/opengraph-image`,
+    "@graph": [
+      {
+        "@type": "NewsArticle",
+        mainEntityOfPage: { "@type": "WebPage", "@id": url },
+        headline: article.title,
+        description: article.summary,
+        image: [
+          article.image_url?.startsWith("http")
+            ? article.image_url
+            : `${url}/opengraph-image`,
+        ],
+        datePublished: article.published_at || article.created_at,
+        dateModified: article.published_at || article.created_at,
+        inLanguage: "uz",
+        articleSection: article.category?.name,
+        keywords: (article.tags || []).join(", "),
+        author: {
+          "@type": "Organization",
+          name: SITE_NAME,
+          url: SITE_URL,
+        },
+        publisher: { "@id": `${SITE_URL}/#organization` },
+        isBasedOn: article.original_url,
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Bosh sahifa",
+            item: SITE_URL,
+          },
+          ...(article.category
+            ? [
+                {
+                  "@type": "ListItem",
+                  position: 2,
+                  name: article.category.name,
+                  item: `${SITE_URL}/kategoriya/${article.category.slug}`,
+                },
+              ]
+            : []),
+          {
+            "@type": "ListItem",
+            position: article.category ? 3 : 2,
+            name: article.title,
+            item: url,
+          },
+        ],
+      },
     ],
-    datePublished: article.published_at || article.created_at,
-    dateModified: article.published_at || article.created_at,
-    inLanguage: "uz",
-    articleSection: article.category?.name,
-    keywords: (article.tags || []).join(", "),
-    author: {
-      "@type": "Organization",
-      name: SITE_NAME,
-      url: SITE_URL,
-    },
-    publisher: { "@id": `${SITE_URL}/#organization` },
-    isBasedOn: article.original_url,
   };
 }
 
 export default async function ArticlePage({ params }) {
   const { slug } = await params;
-  const article = await apiGet(`/api/news/${slug}`);
+  const article = await getArticle(slug);
 
-  if (!article) {
-    return (
-      <div className="py-24 text-center text-slate-400">
-        <div className="text-4xl mb-4">⚠️</div>
-        <p className="mb-4 text-base font-semibold text-white">Maqola topilmadi.</p>
-        <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400 hover:text-emerald-300">
-          ← Bosh sahifaga qaytish
-        </Link>
-      </div>
-    );
-  }
+  if (!article) notFound();
 
   const stars = "⭐".repeat(Math.max(1, Math.min(5, article.importance)));
+  const readingMinutes = Math.max(
+    1,
+    Math.ceil((article.content || "").split(/\s+/).length / 200),
+  );
   const date = article.published_at
     ? new Date(article.published_at).toLocaleString("uz-UZ", {
         day: "numeric",
@@ -89,6 +128,13 @@ export default async function ArticlePage({ params }) {
         minute: "2-digit",
       })
     : "";
+  const sourceDate = article.source_published_at
+    ? new Date(article.source_published_at).toLocaleDateString("uz-UZ", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(`${SITE_URL}/maqola/${article.slug}`)}&text=${encodeURIComponent(article.title)}`;
 
   return (
@@ -96,7 +142,7 @@ export default async function ArticlePage({ params }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(articleJsonLd(article)),
+          __html: JSON.stringify(structuredData(article)),
         }}
       />
       
@@ -124,10 +170,36 @@ export default async function ArticlePage({ params }) {
       {/* Article Cover Image */}
       {article.image_url && (
         <div className="relative mb-6 overflow-hidden rounded-2xl border border-slate-900 aspect-video w-full bg-slate-950">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={article.image_url} alt={article.title} className="h-full w-full object-cover" />
+          <Image
+            src={article.image_url}
+            alt={article.title}
+            fill
+            priority
+            sizes="(max-width: 768px) 100vw, 672px"
+            className="object-cover"
+          />
         </div>
       )}
+
+      <div className="mb-6 grid gap-2 rounded-2xl border border-slate-900 bg-slate-950/50 p-4 text-xs text-slate-400 sm:grid-cols-3">
+        <div>
+          <span className="block font-bold text-slate-200">Manba</span>
+          {article.source_name || "Ochiq manba"}
+        </div>
+        <div>
+          <span className="block font-bold text-slate-200">O‘qish vaqti</span>
+          Taxminan {readingMinutes} daqiqa
+        </div>
+        <div>
+          <span className="block font-bold text-slate-200">Tayyorlash usuli</span>
+          AI yordamida o‘zbekchalashtirilgan
+        </div>
+        {sourceDate && (
+          <p className="sm:col-span-3 border-t border-slate-900 pt-2 text-[11px] text-slate-500">
+            Asl xabar e’lon qilingan sana: {sourceDate}
+          </p>
+        )}
+      </div>
 
       {/* Summary Highlight (Blockquote) */}
       <div className="mb-7 border-l-4 border-emerald-500 bg-emerald-950/10 p-5 rounded-r-2xl text-[15px] sm:text-lg font-semibold leading-relaxed text-slate-200">

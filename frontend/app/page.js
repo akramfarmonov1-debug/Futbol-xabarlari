@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import ArticleCard from "../components/ArticleCard";
 import AdPlaceholder from "../components/AdPlaceholder";
@@ -32,11 +33,13 @@ export default async function HomePage() {
               {/* Image */}
               <Link href={`/maqola/${heroArticle.slug}`} className="relative block overflow-hidden rounded-2xl aspect-video md:aspect-[4/3] w-full bg-slate-950">
                 {heroArticle.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={heroArticle.image_url}
                     alt={heroArticle.title}
-                    className="h-full w-full object-cover group-hover:scale-102 transition-transform duration-700 ease-out"
+                    fill
+                    priority
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover group-hover:scale-102 transition-transform duration-700 ease-out"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-950/30 to-slate-950 text-6xl">

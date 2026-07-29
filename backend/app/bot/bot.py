@@ -24,6 +24,11 @@ from aiogram.types import (
 from dotenv import load_dotenv
 
 from . import storage
+from ..services.runtime_lock import (
+    BOT_LOCK_ID,
+    release_runtime_lock,
+    try_runtime_lock,
+)
 
 load_dotenv()
 
@@ -185,9 +190,20 @@ async def main():
     if not BOT_TOKEN:
         print("TELEGRAM_BOT_TOKEN is empty. Skipping Telegram Bot startup.")
         return
+
+    runtime_lock = try_runtime_lock(BOT_LOCK_ID)
+    while not runtime_lock.acquired:
+        print("🤖 Bot boshqa instance'da ishlayapti; navbat kutilmoqda...")
+        await asyncio.sleep(15)
+        runtime_lock = try_runtime_lock(BOT_LOCK_ID)
+
     bot = Bot(token=BOT_TOKEN)
-    print("🤖 Bot ishga tushdi...")
-    await dp.start_polling(bot)
+    try:
+        print("🤖 Bot ishga tushdi (yagona faol instance).")
+        await dp.start_polling(bot)
+    finally:
+        await bot.session.close()
+        release_runtime_lock(runtime_lock)
 
 
 if __name__ == "__main__":

@@ -26,11 +26,28 @@ from .seed import seed_categories
 from .services.ai_agent import analyze_news
 from .services.collector import collect_news, fetch_og_image
 from .services.image_gen import generate_image
+from .services.runtime_lock import (
+    PIPELINE_LOCK_ID,
+    release_runtime_lock,
+    try_runtime_lock,
+)
 from .services.telegram import send_to_channel
 from .utils import slugify
 
 
 def run_pipeline(per_feed: int = 5) -> int:
+    runtime_lock = try_runtime_lock(PIPELINE_LOCK_ID)
+    if not runtime_lock.acquired:
+        print("⏭ Pipeline boshqa instance'da ishlayapti; bu ishga tushirish o'tkazib yuborildi.")
+        return 0
+
+    try:
+        return _run_pipeline(per_feed)
+    finally:
+        release_runtime_lock(runtime_lock)
+
+
+def _run_pipeline(per_feed: int = 5) -> int:
     Base.metadata.create_all(engine)
     db = SessionLocal()
     saved = 0

@@ -142,10 +142,14 @@ To'liq interaktiv hujjatlar: `http://localhost:8000/docs`
 
 **Avtomatik rejim (standart, `AUTO_PUBLISH=true`):**
 
-1. Cron har soatda `python -m app.pipeline` ni ishga tushiradi
-2. RSS'dan yangiliklar yig'iladi, dublikatlar filtrlanadi, Claude har birini o'zbekcha maqolaga aylantiradi
+1. Backend fon pipeline'ini `PIPELINE_INTERVAL` bo'yicha ishga tushiradi
+2. RSS'dan yangi xabarlar yig'iladi, eskirganlari va dublikatlar filtrlanadi, tanlangan AI modeli har birini o'zbekcha maqolaga aylantiradi
 3. Maqolalar **darhol saytga chiqadi**; muhimlari (bahosi ≥ `AUTO_TELEGRAM_MIN_IMPORTANCE`, standart 4) **Telegram kanalga ham avtomatik yuboriladi**
 4. Admin `/admin` panelda faqat nazorat qiladi: xato maqolani tahrirlaydi yoki o'chiradi
+
+Render zero-downtime deploy vaqtida eski va yangi instance qisqa muddat birga
+ishlasa ham PostgreSQL advisory lock bot va pipeline'ning faqat bitta nusxasini
+faol qoldiradi.
 
 Sozlamalar (`.env`):
 
@@ -155,6 +159,8 @@ Sozlamalar (`.env`):
 | `AUTO_PUBLISH_MIN_IMPORTANCE` | `1` | Shu bahodan pastlari `pending`da qoladi |
 | `AUTO_TELEGRAM` | `true` | Muhim yangiliklarni kanalga avto-yuborish |
 | `AUTO_TELEGRAM_MIN_IMPORTANCE` | `4` | Kanalga yuborish uchun minimal baho |
+| `PIPELINE_INTERVAL` | `3600` | Pipeline qayta ishga tushish oralig'i, soniyada |
+| `MAX_NEWS_AGE_DAYS` | `3` | RSS'dan olinadigan xabarlarning maksimal yoshi |
 
 **Moderatsiya rejimi (`AUTO_PUBLISH=false`):** maqolalar `pending` holatda saqlanadi, admin `/admin` sahifasida ko'rib **Tasdiqlash** bosgachgina saytga chiqadi va **Telegramga** tugmasi bilan kanalga yuboradi.
 

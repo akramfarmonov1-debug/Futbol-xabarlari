@@ -35,7 +35,6 @@ function TeamCrest({ src, name }) {
         fill
         sizes="24px"
         className="object-contain"
-        unoptimized
       />
     </span>
   );
@@ -137,7 +136,6 @@ export default async function LiveScores() {
                       fill
                       sizes="20px"
                       className="object-contain"
-                      unoptimized
                     />
                   </span>
                 )}

@@ -11,18 +11,76 @@ export const metadata = {
 
 export const revalidate = 3600;
 
-function getPositionIndicator(position, total) {
-  if (position <= 4) return "border-l-[3px] border-l-emerald-500 pl-2";
-  if (position === 5) return "border-l-[3px] border-l-sky-500 pl-2";
-  if (position >= total - 2) return "border-l-[3px] border-l-red-500 pl-2";
-  return "pl-3";
+function getZone(code, position, total) {
+  if (code === "UZB") {
+    if (position === 1) return "leader";
+    if (position >= 12 && position <= 15) return "playoff";
+    if (position === 16) return "relegation";
+    return null;
+  }
+
+  if (code === "CL") {
+    if (position <= 8) return "champions";
+    if (position <= 24) return "europa";
+    return null;
+  }
+
+  if (position <= 4) return "champions";
+  if (position === 5) return "europa";
+  if (code === "BL1" && position === total - 2) return "playoff";
+  if (position >= total - 2) return "relegation";
+  return null;
 }
 
-function getPositionColor(position, total) {
-  if (position <= 4) return "font-bold text-emerald-400";
-  if (position === 5) return "font-bold text-sky-400";
-  if (position >= total - 2) return "font-bold text-red-400";
-  return "text-slate-400";
+const ZONE_STYLES = {
+  leader: {
+    indicator: "border-l-[3px] border-l-emerald-500 pl-2",
+    color: "font-bold text-emerald-400",
+  },
+  champions: {
+    indicator: "border-l-[3px] border-l-emerald-500 pl-2",
+    color: "font-bold text-emerald-400",
+  },
+  europa: {
+    indicator: "border-l-[3px] border-l-sky-500 pl-2",
+    color: "font-bold text-sky-400",
+  },
+  playoff: {
+    indicator: "border-l-[3px] border-l-amber-500 pl-2",
+    color: "font-bold text-amber-400",
+  },
+  relegation: {
+    indicator: "border-l-[3px] border-l-red-500 pl-2",
+    color: "font-bold text-red-400",
+  },
+};
+
+function getPositionStyle(code, position, total) {
+  const zone = getZone(code, position, total);
+  return zone
+    ? ZONE_STYLES[zone]
+    : { indicator: "pl-3", color: "text-slate-400" };
+}
+
+function getLegend(code) {
+  if (code === "UZB") {
+    return [
+      { color: "bg-emerald-500", label: "Peshqadam" },
+      { color: "bg-amber-500", label: "12–15-o‘rin: pley-off" },
+      { color: "bg-red-500", label: "16-o‘rin: Proligaga tushadi" },
+    ];
+  }
+  if (code === "CL") {
+    return [
+      { color: "bg-emerald-500", label: "1/8 finalga to‘g‘ridan-to‘g‘ri" },
+      { color: "bg-sky-500", label: "Pley-off bosqichi" },
+    ];
+  }
+  return [
+    { color: "bg-emerald-500", label: "Chempionlar Ligasi" },
+    { color: "bg-sky-500", label: "Europa Ligasi" },
+    { color: "bg-red-500", label: "Quyi zona" },
+  ];
 }
 
 function LeagueBadge({ profile, name, size = 20 }) {
@@ -39,7 +97,6 @@ function LeagueBadge({ profile, name, size = 20 }) {
         fill
         sizes={`${size}px`}
         className="object-contain"
-        unoptimized
       />
     </span>
   );
@@ -56,7 +113,6 @@ function TeamIdentity({ row }) {
             fill
             sizes="28px"
             className="object-contain"
-            unoptimized
           />
         </span>
       ) : (
@@ -114,6 +170,7 @@ export default async function StandingsPage({ searchParams }) {
       0,
     ) / 2,
   );
+  const legend = getLegend(active.code);
 
   return (
     <div className="space-y-6 py-4 sm:py-8">
@@ -126,7 +183,6 @@ export default async function StandingsPage({ searchParams }) {
             priority
             sizes="(max-width: 1024px) 100vw, 1100px"
             className="object-cover opacity-30"
-            unoptimized
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-emerald-950/45" />
@@ -141,7 +197,6 @@ export default async function StandingsPage({ searchParams }) {
                   fill
                   sizes="80px"
                   className="object-contain p-3"
-                  unoptimized
                 />
               ) : (
                 <span className="text-3xl" aria-hidden="true">
@@ -163,6 +218,7 @@ export default async function StandingsPage({ searchParams }) {
                 {activeProfile?.formed_year
                   ? ` · ${activeProfile.formed_year}-yildan`
                   : ""}
+                {data?.season ? ` · ${data.season}-yilgi mavsum` : ""}
               </p>
             </div>
           </div>
@@ -255,26 +311,24 @@ export default async function StandingsPage({ searchParams }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-900/60">
-              {table.map((row) => (
-                <tr
-                  key={row.position}
-                  className="transition-colors duration-150 hover:bg-slate-900/20"
-                >
-                  <td
-                    className={`py-3 font-bold ${getPositionColor(
-                      row.position,
-                      totalTeams,
-                    )}`}
+              {table.map((row) => {
+                const positionStyle = getPositionStyle(
+                  active.code,
+                  row.position,
+                  totalTeams,
+                );
+                return (
+                  <tr
+                    key={row.position}
+                    className="transition-colors duration-150 hover:bg-slate-900/20"
                   >
-                    <div
-                      className={getPositionIndicator(
-                        row.position,
-                        totalTeams,
-                      )}
+                    <td
+                      className={`py-3 font-bold ${positionStyle.color}`}
                     >
-                      {row.position}
-                    </div>
-                  </td>
+                      <div className={positionStyle.indicator}>
+                        {row.position}
+                      </div>
+                    </td>
                   <td className="px-3 py-3 font-semibold text-white">
                     <TeamIdentity row={row} />
                   </td>
@@ -296,8 +350,9 @@ export default async function StandingsPage({ searchParams }) {
                   <td className="px-4 py-3 text-center font-extrabold text-white">
                     {row.points}
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -306,23 +361,32 @@ export default async function StandingsPage({ searchParams }) {
       {table.length > 0 && (
         <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-x-6 gap-y-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span>Chempionlar Ligasi</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-sky-500" />
-              <span>Europa Ligasi</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-red-500" />
-              <span>Chiqib ketish zonasi</span>
-            </div>
+            {legend.map((item) => (
+              <div key={item.label} className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${item.color}`} />
+                <span>{item.label}</span>
+              </div>
+            ))}
           </div>
-          <p className="text-[10px] text-slate-600">
-            Natijalar: {data?.source || "sport ma'lumotlari API"}
-            {" · "}Vizuallar: TheSportsDB
-          </p>
+          <div className="text-right text-[10px] leading-relaxed text-slate-600">
+            <p>
+              Natijalar:{" "}
+              {data?.source === "PFL.UZ" ? (
+                <a
+                  href="https://pfl.uz"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-slate-700 underline-offset-2 hover:text-emerald-400"
+                >
+                  PFL.UZ rasmiy ma’lumoti
+                </a>
+              ) : (
+                data?.source || "sport ma’lumotlari API"
+              )}
+              {" · "}Vizuallar: TheSportsDB
+            </p>
+            <p>Jadval har soatda yangilanadi</p>
+          </div>
         </div>
       )}
     </div>

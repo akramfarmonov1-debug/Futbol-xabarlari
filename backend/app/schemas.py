@@ -29,6 +29,7 @@ class ArticleOut(BaseModel):
     category: CategoryOut | None
     status: str
     sent_to_telegram: bool
+    source_published_at: datetime | None
     published_at: datetime | None
     created_at: datetime
 
