@@ -1,6 +1,8 @@
 import { API_URL } from "../lib/api";
 import { SITE_URL } from "../lib/site";
 
+const ARTICLE_PAGE_SIZE = 400;
+
 async function fetchJson(url) {
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
@@ -11,9 +13,25 @@ async function fetchJson(url) {
   }
 }
 
+async function fetchAllArticles() {
+  const articles = [];
+
+  for (let offset = 0; ; offset += ARTICLE_PAGE_SIZE) {
+    const page = await fetchJson(
+      `${API_URL}/api/news?limit=${ARTICLE_PAGE_SIZE}&offset=${offset}`,
+    );
+
+    if (!Array.isArray(page) || page.length === 0) break;
+    articles.push(...page);
+    if (page.length < ARTICLE_PAGE_SIZE) break;
+  }
+
+  return articles;
+}
+
 export default async function sitemap() {
   const [articles, categories] = await Promise.all([
-    fetchJson(`${API_URL}/api/news?limit=500`),
+    fetchAllArticles(),
     fetchJson(`${API_URL}/api/categories`),
   ]);
 

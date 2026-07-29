@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import AdPlaceholder from "../../../components/AdPlaceholder";
 import { apiGet } from "../../../lib/api";
 import { formatUzDate, formatUzDateTime } from "../../../lib/date";
+import { truncateSeoText } from "../../../lib/seo";
 import { SITE_URL, SITE_NAME } from "../../../lib/site";
 
 const getArticle = cache((slug) => apiGet(`/api/news/${slug}`));
@@ -19,14 +20,17 @@ export async function generateMetadata({ params }) {
     };
   }
 
-  const title = article.seo_title || article.title;
+  const rawTitle = article.seo_title || article.title;
+  const title = truncateSeoText(rawTitle, 48);
+  const socialTitle = truncateSeoText(rawTitle, 90);
+  const description = truncateSeoText(article.summary, 155);
   const url = `/maqola/${article.slug}`;
   const image =
     article.image_url || `${SITE_URL}/maqola/${article.slug}/opengraph-image`;
 
   return {
     title,
-    description: article.summary,
+    description,
     keywords: article.tags || [],
     alternates: { canonical: url },
     openGraph: {
@@ -34,8 +38,8 @@ export async function generateMetadata({ params }) {
       url,
       siteName: SITE_NAME,
       locale: "uz_UZ",
-      title,
-      description: article.summary,
+      title: socialTitle,
+      description,
       publishedTime: article.published_at || article.created_at,
       section: article.category?.name,
       tags: article.tags || [],
@@ -43,8 +47,8 @@ export async function generateMetadata({ params }) {
     },
     twitter: {
       card: "summary_large_image",
-      title,
-      description: article.summary,
+      title: socialTitle,
+      description,
       images: [image],
     },
   };
