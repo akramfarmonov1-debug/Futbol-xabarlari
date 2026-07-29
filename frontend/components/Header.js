@@ -12,7 +12,7 @@ export default async function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
             <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-all duration-300">
-              <img src="/logo.svg" alt="Logo" width={28} height={28} className="brightness-0 invert" />
+              <img src="/logo.svg" alt="Futbol Xabar" width={30} height={30} />
             </div>
             <span className="text-xl font-bold tracking-tight text-white">
               Futbol <span className="text-gradient-emerald">Xabar</span>

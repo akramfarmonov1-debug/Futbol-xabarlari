@@ -61,7 +61,7 @@ export default function SubscribePopup() {
         {/* Brand Header */}
         <div className="mb-3 flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 shadow-md shadow-emerald-500/10">
-            <img src="/logo.svg" alt="Logo" width={26} height={26} className="brightness-0 invert" />
+            <img src="/logo.svg" alt="Futbol Xabar" width={28} height={28} />
           </div>
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">Futbol Yangiliklari</h4>
