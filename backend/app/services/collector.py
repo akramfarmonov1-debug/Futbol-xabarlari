@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlparse
 from xml.etree import ElementTree
 
 import httpx
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from ..models import Article
@@ -136,16 +136,35 @@ _OG_PATTERNS = [
 def fetch_og_image(url: str, client: httpx.Client | None = None) -> str | None:
     """Maqola sahifasidan og:image / twitter:image meta tegini oladi
     (RSS'da rasm bo'lmaganda zaxira usul)."""
+    owned_client = None
     try:
         if client is None:
-            with httpx.Client(timeout=15, follow_redirects=True, headers=HEADERS) as owned_client:
-                response = owned_client.get(url)
-        else:
-            response = client.get(url)
-        response.raise_for_status()
-        html = response.text[:200_000]
+            owned_client = httpx.Client(
+                timeout=15,
+                follow_redirects=True,
+                headers=HEADERS,
+            )
+            client = owned_client
+
+        # Ayrim yangilik sahifalari bir necha megabayt HTML qaytaradi. Meta
+        # teglar boshida bo'lgani uchun faqat dastlabki 200 KB oqimda o'qiladi.
+        body = bytearray()
+        with client.stream("GET", url) as response:
+            response.raise_for_status()
+            for chunk in response.iter_bytes():
+                remaining = 200_000 - len(body)
+                if remaining <= 0:
+                    break
+                body.extend(chunk[:remaining])
+                if len(body) >= 200_000:
+                    break
+            html = body.decode(response.encoding or "utf-8", errors="ignore")
     except Exception:
         return None
+    finally:
+        if owned_client is not None:
+            owned_client.close()
+
     for pattern in _OG_PATTERNS:
         match = re.search(pattern, html, re.IGNORECASE)
         if match and match.group(1).startswith("http"):
@@ -201,53 +220,64 @@ def improve_image_url(
 def upgrade_existing_images(db: Session) -> int:
     """Bazadagi eski past aniqlikdagi rasmlarni kam xotira bilan yangilaydi."""
     changed = 0
-    last_id = 0
+    guardian_small_widths = or_(
+        Article.image_url.contains("width=140"),
+        Article.image_url.contains("width=240"),
+        Article.image_url.contains("width=300"),
+        Article.image_url.contains("width=500"),
+        Article.image_url.contains("width=620"),
+    )
 
     with httpx.Client(timeout=15, follow_redirects=True, headers=HEADERS) as client:
-        while True:
-            candidates = (
-                db.query(
-                    Article.id,
-                    Article.image_url,
-                    Article.original_url,
-                    Article.source_name,
-                )
-                .filter(
-                    Article.id > last_id,
-                    Article.image_url.isnot(None),
-                    or_(
-                        Article.image_url.contains("i.guim.co.uk"),
-                        Article.image_url.contains("ichef.bbci.co.uk"),
-                        Article.image_url.contains("media.sports.uz/thumbnails/"),
-                    ),
-                )
-                .order_by(Article.id)
-                .limit(25)
-                .all()
+        # Eng yangi maqolalar avval yangilanadi. Har ishga tushishda qat'iy
+        # limit Render free instansiyasida xotira va vaqt sarfini boshqaradi.
+        candidates = (
+            db.query(
+                Article.id,
+                Article.image_url,
+                Article.original_url,
+                Article.source_name,
             )
+            .filter(
+                Article.image_url.isnot(None),
+                or_(
+                    and_(
+                        Article.image_url.contains("i.guim.co.uk"),
+                        guardian_small_widths,
+                    ),
+                    and_(
+                        Article.image_url.contains("ichef.bbci.co.uk"),
+                        or_(
+                            Article.image_url.contains("/ace/standard/"),
+                            Article.image_url.contains("/240/"),
+                        ),
+                    ),
+                    Article.image_url.contains("media.sports.uz/thumbnails/"),
+                ),
+            )
+            .order_by(Article.id.desc())
+            .limit(20)
+            .all()
+        )
 
-            if not candidates:
-                break
-
-            for article_id, image_url, original_url, source_name in candidates:
-                last_id = article_id
-                improved = improve_image_url(
-                    image_url,
-                    original_url,
-                    source_name,
-                    client,
-                )
-                if improved and improved != image_url:
-                    (
-                        db.query(Article)
-                        .filter(Article.id == article_id)
-                        .update(
-                            {Article.image_url: improved},
-                            synchronize_session=False,
-                        )
+        for article_id, image_url, original_url, source_name in candidates:
+            improved = improve_image_url(
+                image_url,
+                original_url,
+                source_name,
+                client,
+            )
+            if improved and improved != image_url:
+                (
+                    db.query(Article)
+                    .filter(Article.id == article_id)
+                    .update(
+                        {Article.image_url: improved},
+                        synchronize_session=False,
                     )
-                    changed += 1
-            db.commit()
+                )
+                changed += 1
+        db.commit()
 
     return changed
 
