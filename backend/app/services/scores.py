@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 
 from ..config import FOOTBALL_DATA_API_KEY
-from . import api_football
+from . import api_football, pfl
 
 BASE = "https://api.football-data.org/v4"
 
@@ -113,7 +113,7 @@ def get_today_matches() -> list[dict]:
         return list(groups.values())
 
     groups = _cached("today", 60, _produce)
-    uzbek_matches = api_football.get_matches()
+    uzbek_matches = pfl.get_matches() or api_football.get_matches()
     if uzbek_matches and uzbek_matches.get("matches"):
         groups = [*groups, uzbek_matches]
     return groups
@@ -122,7 +122,7 @@ def get_today_matches() -> list[dict]:
 def get_standings(code: str) -> dict | None:
     """Bitta turnirning joriy jadvali."""
     if code == api_football.CODE:
-        return api_football.get_standings()
+        return pfl.get_standings() or api_football.get_standings()
     if not FOOTBALL_DATA_API_KEY or code not in COMPETITIONS:
         return None
 
@@ -164,6 +164,5 @@ def list_competitions() -> list[dict]:
         if FOOTBALL_DATA_API_KEY
         else []
     )
-    if api_football.is_configured():
-        competitions.append({"code": api_football.CODE, "name": api_football.NAME})
+    competitions.append({"code": pfl.CODE, "name": pfl.NAME})
     return competitions
