@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { formatUzDate } from "../lib/date";
 
 export default function ArticleCard({ article, compact = false }) {
   const stars = "⭐".repeat(Math.max(1, Math.min(5, article.importance)));
@@ -7,12 +8,7 @@ export default function ArticleCard({ article, compact = false }) {
     1,
     Math.ceil((article.content || article.summary || "").split(/\s+/).length / 200),
   );
-  const date = article.published_at
-    ? new Date(article.published_at).toLocaleDateString("uz-UZ", {
-        day: "numeric",
-        month: "short",
-      })
-    : "";
+  const date = formatUzDate(article.published_at);
 
   if (compact) {
     return (

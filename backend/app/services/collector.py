@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from ..models import Article
 from ..utils import title_hash
+from .content_quality import is_football_content
 
 # "keywords" — ixtiyoriy regex: faqat mos kelgan yozuvlar olinadi
 # (aralash sport manbalaridan faqat futbolni ajratish uchun).
@@ -299,13 +300,23 @@ def collect_news(db: Session, per_feed: int = 5) -> list[dict]:
                 print(f"  ✗ Manba o'qilmadi ({feed['name']}): {error}")
                 continue
 
-            # Aralash sport manbasi bo'lsa, faqat futbolga oid yozuvlarni qoldiramiz
+            # Manba filtri va umumiy sifat darvozasi: faqat futbol.
             keywords = feed.get("keywords")
             if keywords:
                 entries = [
                     e for e in entries
                     if re.search(keywords, f"{e['title']} {e['summary']}", re.IGNORECASE)
                 ]
+            entries = [
+                entry
+                for entry in entries
+                if is_football_content(
+                    entry["title"],
+                    entry["summary"],
+                    entry["url"],
+                    feed["name"],
+                )
+            ]
 
             entries.sort(
                 key=lambda entry: entry["published"] or datetime.min,

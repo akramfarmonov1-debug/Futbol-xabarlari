@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdPlaceholder from "../../../components/AdPlaceholder";
 import { apiGet } from "../../../lib/api";
+import { formatUzDate, formatUzDateTime } from "../../../lib/date";
 import { SITE_URL, SITE_NAME } from "../../../lib/site";
 
 const getArticle = cache((slug) => apiGet(`/api/news/${slug}`));
@@ -119,21 +120,9 @@ export default async function ArticlePage({ params }) {
     1,
     Math.ceil((article.content || "").split(/\s+/).length / 200),
   );
-  const date = article.published_at
-    ? new Date(article.published_at).toLocaleString("uz-UZ", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
+  const date = formatUzDateTime(article.published_at);
   const sourceDate = article.source_published_at
-    ? new Date(article.source_published_at).toLocaleDateString("uz-UZ", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
+    ? formatUzDate(article.source_published_at, { year: true })
     : null;
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(`${SITE_URL}/maqola/${article.slug}`)}&text=${encodeURIComponent(article.title)}`;
 

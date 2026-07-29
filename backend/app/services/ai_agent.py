@@ -21,6 +21,7 @@ from ..config import (
     GOOGLE_CLOUD_PROJECT,
     VERTEX_GEMINI_MODEL,
 )
+from .content_quality import normalize_analysis
 
 SYSTEM_PROMPT = """**Rol:** Sen jahon futboli bo'yicha yetakchi o'zbek sport jurnalisti va tahlilchisisan.
 
@@ -67,8 +68,7 @@ def _validate(analysis: dict) -> dict:
     analysis["ahamiyati"] = max(1, min(5, int(analysis.get("ahamiyati", 3))))
     if analysis.get("kategoriya") not in CATEGORY_SLUGS:
         analysis["kategoriya"] = "jahon-futboli"
-    analysis["teglar"] = [str(t) for t in (analysis.get("teglar") or [])][:6]
-    return analysis
+    return normalize_analysis(analysis)
 
 
 def _analyze_with_gemini(user_text: str) -> dict:

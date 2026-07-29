@@ -29,6 +29,12 @@ from .services.collector import (
     improve_image_url,
     upgrade_existing_images,
 )
+from .services.content_quality import (
+    analysis_is_publishable,
+    cleanup_existing_articles,
+    infer_category,
+    is_football_content,
+)
 from .services.image_gen import generate_image
 from .services.runtime_lock import (
     PIPELINE_LOCK_ID,
@@ -59,6 +65,13 @@ def _run_pipeline(per_feed: int = 5) -> int:
         seed_categories(db)
         categories = {c.slug: c for c in db.query(Category).all()}
 
+        rejected, corrected = cleanup_existing_articles(db)
+        if rejected or corrected:
+            print(
+                f"🧹 Kontent tozalandi: {rejected} ta futbolga aloqasiz "
+                f"xabar yashirildi, {corrected} ta matn xatosi tuzatildi."
+            )
+
         upgraded = upgrade_existing_images(db)
         if upgraded:
             print(f"🖼 {upgraded} ta eski rasm yuqori sifatli variantga yangilandi.")
@@ -69,6 +82,14 @@ def _run_pipeline(per_feed: int = 5) -> int:
 
         for i, news in enumerate(fresh, 1):
             print(f"🤖 [{i}/{len(fresh)}] {news['title'][:65]}")
+            if not is_football_content(
+                news["title"],
+                news["content"],
+                news["url"],
+                news["source"],
+            ):
+                print("   ✗ Futbolga aloqasiz xabar o'tkazib yuborildi")
+                continue
             try:
                 analysis = analyze_news(
                     title=news["title"],
@@ -79,6 +100,26 @@ def _run_pipeline(per_feed: int = 5) -> int:
             except Exception as error:
                 print(f"   ✗ Tahlil xatosi: {error}")
                 continue
+
+            publishable, quality_reasons = analysis_is_publishable(analysis)
+            if not publishable:
+                print(
+                    "   ✗ Sifat nazoratidan o'tmadi: "
+                    + ", ".join(quality_reasons)
+                )
+                continue
+
+            analysis["kategoriya"] = infer_category(
+                " ".join(
+                    [
+                        news["title"],
+                        news["content"],
+                        analysis["sarlavha"],
+                        analysis["xulosa"],
+                    ]
+                ),
+                analysis["kategoriya"],
+            )
 
             slug = slugify(analysis["sarlavha"])
             if db.query(Article).filter(Article.slug == slug).first():

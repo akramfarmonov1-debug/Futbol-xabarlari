@@ -4,6 +4,7 @@ import ArticleCard from "../components/ArticleCard";
 import AdPlaceholder from "../components/AdPlaceholder";
 import LiveScores from "../components/LiveScores";
 import { apiGet } from "../lib/api";
+import { formatUzDate } from "../lib/date";
 
 export default async function HomePage() {
   const [latest, top, digest, trends] = await Promise.all([
@@ -74,12 +75,7 @@ export default async function HomePage() {
 
                 <div className="flex items-center justify-between border-t border-slate-900/60 pt-4">
                   <span className="text-xs sm:text-sm text-slate-500 font-semibold">
-                    {heroArticle.published_at
-                      ? new Date(heroArticle.published_at).toLocaleDateString("uz-UZ", {
-                          day: "numeric",
-                          month: "long",
-                        })
-                      : ""}
+                    {formatUzDate(heroArticle.published_at)}
                   </span>
                   <Link
                     href={`/maqola/${heroArticle.slug}`}
