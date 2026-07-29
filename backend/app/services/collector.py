@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urlparse
 from xml.etree import ElementTree
 
 import httpx
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..models import Article
@@ -132,14 +133,17 @@ _OG_PATTERNS = [
 ]
 
 
-def fetch_og_image(url: str) -> str | None:
+def fetch_og_image(url: str, client: httpx.Client | None = None) -> str | None:
     """Maqola sahifasidan og:image / twitter:image meta tegini oladi
     (RSS'da rasm bo'lmaganda zaxira usul)."""
     try:
-        with httpx.Client(timeout=15, follow_redirects=True, headers=HEADERS) as client:
+        if client is None:
+            with httpx.Client(timeout=15, follow_redirects=True, headers=HEADERS) as owned_client:
+                response = owned_client.get(url)
+        else:
             response = client.get(url)
-            response.raise_for_status()
-            html = response.text[:200_000]
+        response.raise_for_status()
+        html = response.text[:200_000]
     except Exception:
         return None
     for pattern in _OG_PATTERNS:
@@ -161,10 +165,11 @@ def improve_image_url(
     image_url: str | None,
     article_url: str = "",
     source: str = "",
+    client: httpx.Client | None = None,
 ) -> str | None:
     """RSS thumbnailini mavjud bo'lsa katta, maqola darajasidagi rasmga almashtiradi."""
     if not image_url:
-        return fetch_og_image(article_url) if article_url else None
+        return fetch_og_image(article_url, client) if article_url else None
 
     host = urlparse(image_url).hostname or ""
 
@@ -188,30 +193,62 @@ def improve_image_url(
         host == "media.sports.uz" and "/thumbnails/" in image_url
     )
     if (is_small_guardian or is_sports_thumbnail) and article_url:
-        return fetch_og_image(article_url) or image_url
+        return fetch_og_image(article_url, client) or image_url
 
     return image_url
 
 
 def upgrade_existing_images(db: Session) -> int:
-    """Bazadagi eski past aniqlikdagi rasmlarni bir marta yangilaydi."""
+    """Bazadagi eski past aniqlikdagi rasmlarni kam xotira bilan yangilaydi."""
     changed = 0
-    articles = (
-        db.query(Article)
-        .filter(Article.image_url.isnot(None))
-        .all()
-    )
-    for article in articles:
-        improved = improve_image_url(
-            article.image_url,
-            article.original_url,
-            article.source_name,
-        )
-        if improved and improved != article.image_url:
-            article.image_url = improved
-            changed += 1
-    if changed:
-        db.commit()
+    last_id = 0
+
+    with httpx.Client(timeout=15, follow_redirects=True, headers=HEADERS) as client:
+        while True:
+            candidates = (
+                db.query(
+                    Article.id,
+                    Article.image_url,
+                    Article.original_url,
+                    Article.source_name,
+                )
+                .filter(
+                    Article.id > last_id,
+                    Article.image_url.isnot(None),
+                    or_(
+                        Article.image_url.contains("i.guim.co.uk"),
+                        Article.image_url.contains("ichef.bbci.co.uk"),
+                        Article.image_url.contains("media.sports.uz/thumbnails/"),
+                    ),
+                )
+                .order_by(Article.id)
+                .limit(25)
+                .all()
+            )
+
+            if not candidates:
+                break
+
+            for article_id, image_url, original_url, source_name in candidates:
+                last_id = article_id
+                improved = improve_image_url(
+                    image_url,
+                    original_url,
+                    source_name,
+                    client,
+                )
+                if improved and improved != image_url:
+                    (
+                        db.query(Article)
+                        .filter(Article.id == article_id)
+                        .update(
+                            {Article.image_url: improved},
+                            synchronize_session=False,
+                        )
+                    )
+                    changed += 1
+            db.commit()
+
     return changed
 
 
