@@ -104,7 +104,6 @@ def _league_context() -> tuple[int, int] | None:
                 "/leagues",
                 {
                     "country": "Uzbekistan",
-                    "search": "Super League",
                 },
             )
             if not rows:
