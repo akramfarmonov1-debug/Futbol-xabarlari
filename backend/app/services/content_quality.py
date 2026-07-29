@@ -2,7 +2,7 @@
 
 import re
 
-from sqlalchemy import or_, func
+from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import Session
 
 from ..models import Article
@@ -169,11 +169,15 @@ def cleanup_existing_articles(db: Session) -> tuple[int, int]:
         Article.original_url.contains(part)
         for part in NON_FOOTBALL_URL_PARTS
     ]
+    sky_non_football = and_(
+        Article.source_name.contains("Sky Sports"),
+        ~Article.original_url.contains("/football/"),
+    )
     rejected = (
         db.query(Article)
         .filter(
             Article.status == "published",
-            or_(*bad_url_filters),
+            or_(sky_non_football, *bad_url_filters),
         )
         .update(
             {Article.status: "rejected"},

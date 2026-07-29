@@ -106,6 +106,13 @@ class ContentQualityTests(unittest.TestCase):
                     status="published",
                 ),
                 Article(
+                    title="Goodwood kubogi",
+                    slug="racing",
+                    original_url="https://www.skysports.com/racing/news/2",
+                    source_name="Sky Sports Football",
+                    status="published",
+                ),
+                Article(
                     title="Wrexham Liverpooolga qarshi",
                     slug="wrexham",
                     original_url="https://www.theguardian.com/football/example",
@@ -117,9 +124,13 @@ class ContentQualityTests(unittest.TestCase):
         session.commit()
 
         rejected, corrected = cleanup_existing_articles(session)
-        self.assertEqual(rejected, 1)
+        self.assertEqual(rejected, 2)
         self.assertGreaterEqual(corrected, 1)
         self.assertEqual(session.query(Article).filter_by(slug="f1").one().status, "rejected")
+        self.assertEqual(
+            session.query(Article).filter_by(slug="racing").one().status,
+            "rejected",
+        )
         self.assertEqual(
             session.query(Article).filter_by(slug="wrexham").one().title,
             "Wrexham Liverpulga qarshi",
