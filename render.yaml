@@ -37,6 +37,8 @@ services:
         value: "3600"
       - key: THESPORTSDB_API_KEY
         value: "123"
+      - key: API_FOOTBALL_KEY
+        sync: false
       - key: FRONTEND_ORIGIN
         value: "https://futbolxabar.uz"
 

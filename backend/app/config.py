@@ -31,6 +31,16 @@ TELEGRAM_CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "")  # masalan: @ai_news_
 # Bo'sh bo'lsa — "Bugungi o'yinlar" va "Jadval" bloklari yashiriladi.
 FOOTBALL_DATA_API_KEY = os.getenv("FOOTBALL_DATA_API_KEY", "")
 
+# O'zbekiston Superligasi uchun API-Football (API-Sports).
+# Kalit faqat backendda saqlanadi: https://dashboard.api-football.com/
+API_FOOTBALL_KEY = (
+    os.getenv("API_FOOTBALL_KEY", "") or os.getenv("API_SPORTS_KEY", "")
+).strip()
+API_FOOTBALL_UZ_LEAGUE_ID = os.getenv(
+    "API_FOOTBALL_UZ_LEAGUE_ID", ""
+).strip()
+API_FOOTBALL_SEASON = os.getenv("API_FOOTBALL_SEASON", "").strip()
+
 # Liga belgilari, bannerlari va qo'shimcha metadata uchun TheSportsDB.
 # "123" — TheSportsDB tomonidan rasmiy taqdim etilgan umumiy bepul V1 kalit.
 THESPORTSDB_API_KEY = os.getenv("THESPORTSDB_API_KEY", "123").strip()

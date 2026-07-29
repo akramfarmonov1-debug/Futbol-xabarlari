@@ -5,7 +5,7 @@ import { apiGet } from "../../lib/api";
 export const metadata = {
   title: "Turnir jadvallari",
   description:
-    "Angliya Premyer-ligasi, La Liga, Seriya A, Bundesliga va Chempionlar ligasi jadvallari, klub logotiplari va liga ma’lumotlari.",
+    "O'zbekiston Superligasi, Angliya Premyer-ligasi, La Liga, Seriya A, Bundesliga va Chempionlar ligasi jadvallari.",
   alternates: { canonical: "/jadval" },
 };
 
@@ -158,7 +158,8 @@ export default async function StandingsPage({ searchParams }) {
                 {active.name}
               </h1>
               <p className="mt-2 text-xs text-slate-400">
-                {activeProfile?.country || "Yevropa"}
+                {activeProfile?.country ||
+                  (active.code === "UZB" ? "Uzbekistan" : "Yevropa")}
                 {activeProfile?.formed_year
                   ? ` · ${activeProfile.formed_year}-yildan`
                   : ""}
@@ -319,7 +320,8 @@ export default async function StandingsPage({ searchParams }) {
             </div>
           </div>
           <p className="text-[10px] text-slate-600">
-            Natijalar: football-data.org · Vizuallar: TheSportsDB
+            Natijalar: {data?.source || "sport ma'lumotlari API"}
+            {" · "}Vizuallar: TheSportsDB
           </p>
         </div>
       )}

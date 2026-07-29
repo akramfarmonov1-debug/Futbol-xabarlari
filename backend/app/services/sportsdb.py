@@ -22,6 +22,7 @@ LEAGUE_IDS = {
     "BL1": "4331",
     "FL1": "4334",
     "CL": "4480",
+    "UZB": "4794",
 }
 
 LEAGUE_NAMES = {
@@ -31,6 +32,7 @@ LEAGUE_NAMES = {
     "BL1": "Bundesliga",
     "FL1": "Fransiya Ligasi 1",
     "CL": "Chempionlar ligasi",
+    "UZB": "O'zbekiston Superligasi",
 }
 
 _cache: dict[str, tuple[float, dict]] = {}

@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 
 from ..config import FOOTBALL_DATA_API_KEY
+from . import api_football
 
 BASE = "https://api.football-data.org/v4"
 
@@ -75,10 +76,9 @@ def _short_team(team: dict) -> str:
 
 def get_today_matches() -> list[dict]:
     """Bugungi va ertangi o'yinlar, turnirlar bo'yicha guruhlangan."""
-    if not FOOTBALL_DATA_API_KEY:
-        return []
-
     def _produce():
+        if not FOOTBALL_DATA_API_KEY:
+            return []
         today = datetime.now(timezone.utc).date()
         params = {
             "dateFrom": today.isoformat(),
@@ -112,11 +112,17 @@ def get_today_matches() -> list[dict]:
             })
         return list(groups.values())
 
-    return _cached("today", 60, _produce)
+    groups = _cached("today", 60, _produce)
+    uzbek_matches = api_football.get_matches()
+    if uzbek_matches and uzbek_matches.get("matches"):
+        groups = [*groups, uzbek_matches]
+    return groups
 
 
 def get_standings(code: str) -> dict | None:
     """Bitta turnirning joriy jadvali."""
+    if code == api_football.CODE:
+        return api_football.get_standings()
     if not FOOTBALL_DATA_API_KEY or code not in COMPETITIONS:
         return None
 
@@ -144,6 +150,7 @@ def get_standings(code: str) -> dict | None:
         return {
             "competition": COMPETITIONS[code],
             "code": code,
+            "source": "football-data.org",
             "table": rows,
         }
 
@@ -152,6 +159,11 @@ def get_standings(code: str) -> dict | None:
 
 def list_competitions() -> list[dict]:
     """Jadval mavjud turnirlar ro'yxati (agar kalit sozlangan bo'lsa)."""
-    if not FOOTBALL_DATA_API_KEY:
-        return []
-    return [{"code": c, "name": n} for c, n in COMPETITIONS.items()]
+    competitions = (
+        [{"code": c, "name": n} for c, n in COMPETITIONS.items()]
+        if FOOTBALL_DATA_API_KEY
+        else []
+    )
+    if api_football.is_configured():
+        competitions.append({"code": api_football.CODE, "name": api_football.NAME})
+    return competitions
