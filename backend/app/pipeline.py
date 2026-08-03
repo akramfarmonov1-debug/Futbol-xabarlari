@@ -1,6 +1,7 @@
 """AI Agent quvuri: yig'ish -> dublikat filtri -> tahlil -> saqlash.
 
-AUTO_PUBLISH=true (standart) bo'lsa maqolalar darhol saytga chiqadi va
+AUTO_PUBLISH=true bo'lsa faqat qat'iy avto-nashr darvozasidan o'tgan maqolalar
+darhol saytga chiqadi va
 muhimlari (AUTO_TELEGRAM_MIN_IMPORTANCE dan yuqori) Telegram kanalga
 avtomatik yuboriladi. AUTO_PUBLISH=false bo'lsa eski rejim: maqolalar
 pending holatda admin tasdig'ini kutadi.
@@ -14,7 +15,6 @@ from datetime import datetime
 
 from .config import (
     AUTO_PUBLISH,
-    AUTO_PUBLISH_MIN_IMPORTANCE,
     AUTO_TELEGRAM,
     AUTO_TELEGRAM_MIN_IMPORTANCE,
     IMAGE_GENERATION,
@@ -30,6 +30,7 @@ from .services.collector import (
     upgrade_existing_images,
 )
 from .services.content_quality import (
+    analysis_is_auto_publishable,
     analysis_is_publishable,
     cleanup_existing_articles,
     infer_category,
@@ -223,11 +224,17 @@ def _run_pipeline(per_feed: int = 5) -> int:
             if db.query(Article).filter(Article.slug == slug).first():
                 slug = f"{slug}-{saved + 1}"
 
-            auto_publish = (
-                publishable
-                and AUTO_PUBLISH
-                and analysis["ahamiyati"] >= AUTO_PUBLISH_MIN_IMPORTANCE
+            auto_publishable, auto_publish_reasons = analysis_is_auto_publishable(
+                analysis,
+                source_name=news["source"],
+                source_url=news["url"],
             )
+            auto_publish = publishable and auto_publishable and AUTO_PUBLISH
+            if publishable and AUTO_PUBLISH and not auto_publishable:
+                print(
+                    "   ⚠ Avto-nashr shartlari bajarilmadi: "
+                    + ", ".join(auto_publish_reasons)
+                )
 
             # Rasm zanjiri: yuqori sifatli RSS/og:image -> (ixtiyoriy) Gemini
             image_url = improve_image_url(
@@ -261,6 +268,14 @@ def _run_pipeline(per_feed: int = 5) -> int:
             db.add(article)
             db.commit()
             db.refresh(article)
+            decision = (
+                "auto_published"
+                if auto_publish
+                else "ready"
+                if publishable
+                else "needs_review"
+            )
+            decision_reasons = quality_reasons or auto_publish_reasons
             article_quality = ArticleQuality(
                 article_id=article.id,
                 football_confidence=analysis.get("football_confidence", 0),
@@ -269,8 +284,8 @@ def _run_pipeline(per_feed: int = 5) -> int:
                 event_key=analysis.get("event_key", ""),
                 entities=analysis.get("entities", []),
                 facts=analysis.get("facts", []),
-                decision="ready" if publishable else "needs_review",
-                reasons=quality_reasons,
+                decision=decision,
+                reasons=decision_reasons,
             )
             db.add(article_quality)
             db.commit()
@@ -287,8 +302,8 @@ def _run_pipeline(per_feed: int = 5) -> int:
                 original_url=news["url"],
                 original_title=news["title"],
                 source_name=news["source"],
-                decision="ready" if publishable else "needs_review",
-                reasons=quality_reasons,
+                decision=decision,
+                reasons=decision_reasons,
                 matched_article_id=article.id,
             )
             saved += 1
@@ -311,7 +326,11 @@ def _run_pipeline(per_feed: int = 5) -> int:
                 except Exception as error:
                     print(f"   ✗ Telegram xatosi: {error}")
 
-        mode = "saytga chiqarildi (avto)" if AUTO_PUBLISH else "pending — admin tasdig'ini kutmoqda"
+        mode = (
+            "90+ qat'iy gate: moslari avto, qolganlari pending"
+            if AUTO_PUBLISH
+            else "pending — admin tasdig'ini kutmoqda"
+        )
         print(f"\n✅ {saved} ta maqola saqlandi ({mode}).")
         return saved
     finally:

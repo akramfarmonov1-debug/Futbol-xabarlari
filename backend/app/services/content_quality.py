@@ -1,12 +1,18 @@
 """Futbol kontenti va o'zbekcha matn sifati uchun markaziy nazorat."""
 
 import re
+from urllib.parse import urlparse
 
 from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import Session
 
 from ..models import Article
 from ..config import (
+    AUTO_PUBLISH_MIN_CATEGORY_CONFIDENCE,
+    AUTO_PUBLISH_MIN_FACT_CONFIDENCE,
+    AUTO_PUBLISH_MIN_FOOTBALL_CONFIDENCE,
+    AUTO_PUBLISH_MIN_IMPORTANCE,
+    AUTO_PUBLISH_TRUSTED_SOURCES,
     MIN_CATEGORY_CONFIDENCE,
     MIN_FACT_CONFIDENCE,
     MIN_FOOTBALL_CONFIDENCE,
@@ -234,6 +240,63 @@ def analysis_is_publishable(
 
         if not normalize_text(analysis.get("event_key")):
             reasons.append("event key yaratilmagan")
+
+    return not reasons, reasons
+
+
+def analysis_is_auto_publishable(
+    analysis: dict,
+    source_name: str,
+    source_url: str,
+) -> tuple[bool, list[str]]:
+    """Umumiy quality gate'dan o'tgan xabar uchun qat'iy avto-nashr qarori.
+
+    Dublikat tekshiruvi pipeline'da bu funksiyadan oldin ikki bosqichda
+    bajariladi. Bu yerda confidence, ahamiyat va ishonchli asl manba tekshiriladi.
+    """
+    reasons: list[str] = []
+    confidence_rules = (
+        (
+            "football_confidence",
+            AUTO_PUBLISH_MIN_FOOTBALL_CONFIDENCE,
+            "avto-nashr uchun futbol confidence past",
+        ),
+        (
+            "category_confidence",
+            AUTO_PUBLISH_MIN_CATEGORY_CONFIDENCE,
+            "avto-nashr uchun kategoriya confidence past",
+        ),
+        (
+            "fact_confidence",
+            AUTO_PUBLISH_MIN_FACT_CONFIDENCE,
+            "avto-nashr uchun fakt confidence past",
+        ),
+    )
+    for field, minimum, reason in confidence_rules:
+        try:
+            confidence = int(analysis.get(field, 0))
+        except (TypeError, ValueError):
+            confidence = 0
+        if confidence < minimum:
+            reasons.append(f"{reason} ({confidence} < {minimum})")
+
+    try:
+        importance = int(analysis.get("ahamiyati", 0))
+    except (TypeError, ValueError):
+        importance = 0
+    if importance < AUTO_PUBLISH_MIN_IMPORTANCE:
+        reasons.append(
+            "avto-nashr uchun ahamiyat past "
+            f"({importance} < {AUTO_PUBLISH_MIN_IMPORTANCE})"
+        )
+
+    parsed_source_url = urlparse(str(source_url or "").strip())
+    if parsed_source_url.scheme != "https" or not parsed_source_url.netloc:
+        reasons.append("ishonchli HTTPS manba URL'i mavjud emas")
+
+    normalized_source = str(source_name or "").strip().casefold()
+    if normalized_source not in AUTO_PUBLISH_TRUSTED_SOURCES:
+        reasons.append("manba avto-nashr uchun ishonchli ro'yxatda emas")
 
     return not reasons, reasons
 

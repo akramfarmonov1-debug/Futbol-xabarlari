@@ -55,6 +55,26 @@ def _bool(name: str, default: str) -> bool:
 AUTO_PUBLISH = _bool("AUTO_PUBLISH", "false")
 # Faqat shu bahodan yuqori maqolalar avto-chop etiladi (qolganlari pending)
 AUTO_PUBLISH_MIN_IMPORTANCE = int(os.getenv("AUTO_PUBLISH_MIN_IMPORTANCE", "1"))
+# Avtomatik nashr oddiy quality gate'dan qat'iyroq: uchala confidence ham
+# alohida 90+ bo'lishi kerak. Qiymatlar env orqali boshqariladi.
+AUTO_PUBLISH_MIN_FOOTBALL_CONFIDENCE = int(
+    os.getenv("AUTO_PUBLISH_MIN_FOOTBALL_CONFIDENCE", "90")
+)
+AUTO_PUBLISH_MIN_CATEGORY_CONFIDENCE = int(
+    os.getenv("AUTO_PUBLISH_MIN_CATEGORY_CONFIDENCE", "90")
+)
+AUTO_PUBLISH_MIN_FACT_CONFIDENCE = int(
+    os.getenv("AUTO_PUBLISH_MIN_FACT_CONFIDENCE", "90")
+)
+AUTO_PUBLISH_TRUSTED_SOURCES = frozenset(
+    source.strip().casefold()
+    for source in os.getenv(
+        "AUTO_PUBLISH_TRUSTED_SOURCES",
+        "BBC Sport Football,The Guardian Football,Sky Sports Football,"
+        "ESPN Soccer,Sports.uz",
+    ).split(",")
+    if source.strip()
+)
 MIN_FOOTBALL_CONFIDENCE = int(os.getenv("MIN_FOOTBALL_CONFIDENCE", "85"))
 MIN_CATEGORY_CONFIDENCE = int(os.getenv("MIN_CATEGORY_CONFIDENCE", "75"))
 MIN_FACT_CONFIDENCE = int(os.getenv("MIN_FACT_CONFIDENCE", "80"))
