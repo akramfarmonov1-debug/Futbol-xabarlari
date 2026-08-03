@@ -160,6 +160,10 @@ Sozlamalar (`.env`):
 |---|---|---|
 | `AUTO_PUBLISH` | `false` | Faqat quality gate'dan o'tgan maqolalarni avtomatik chiqarish uchun `true` qiling |
 | `AUTO_PUBLISH_MIN_IMPORTANCE` | `1` | Shu bahodan pastlari `pending`da qoladi |
+| `AUTO_PUBLISH_MIN_FOOTBALL_CONFIDENCE` | `90` | Avto-nashr uchun futbolga aloqadorlikning qat'iy minimumi |
+| `AUTO_PUBLISH_MIN_CATEGORY_CONFIDENCE` | `90` | Avto-nashr uchun kategoriya aniqligining qat'iy minimumi |
+| `AUTO_PUBLISH_MIN_FACT_CONFIDENCE` | `90` | Avto-nashr uchun faktlar ishonchliligining qat'iy minimumi |
+| `AUTO_PUBLISH_TRUSTED_SOURCES` | `BBC, Guardian, Sky, ESPN, Sports.uz` | Avto-nashrga ruxsat berilgan RSS manbalari (vergul bilan) |
 | `MIN_FOOTBALL_CONFIDENCE` | `85` | Futbolga aloqadorlik uchun minimal confidence |
 | `MIN_CATEGORY_CONFIDENCE` | `75` | Kategoriya uchun minimal confidence |
 | `MIN_FACT_CONFIDENCE` | `80` | Faktlar uchun minimal confidence |
@@ -168,7 +172,11 @@ Sozlamalar (`.env`):
 | `PIPELINE_INTERVAL` | `3600` | Pipeline qayta ishga tushish oralig'i, soniyada |
 | `MAX_NEWS_AGE_DAYS` | `3` | RSS'dan olinadigan xabarlarning maksimal yoshi |
 
-**Avtomatik rejim (`AUTO_PUBLISH=true`)** faqat structured quality gate'dan o'tgan materiallarni chiqaradi. Kategoriya override, past confidence yoki manbada topilmagan fakt dalili maqolani baribir `pending` holatida qoldiradi.
+**Avtomatik rejim (`AUTO_PUBLISH=true`)** faqat structured quality gate'dan
+o'tgan, uchala confidence bahosi kamida 90 bo'lgan va ishonchli HTTPS manbaga
+ega materiallarni chiqaradi. Dublikat, kategoriya override, past confidence,
+ishonchsiz manba yoki manbada topilmagan fakt dalili maqolani baribir `pending`
+holatida qoldiradi.
 
 ## Kelajakdagi rejalar (TZ bo'yicha)
 

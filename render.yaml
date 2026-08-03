@@ -30,7 +30,17 @@ services:
       - key: TELEGRAM_CHANNEL_ID
         sync: false
       - key: AUTO_PUBLISH
-        value: "false"
+        value: "true"
+      - key: AUTO_PUBLISH_MIN_IMPORTANCE
+        value: "1"
+      - key: AUTO_PUBLISH_MIN_FOOTBALL_CONFIDENCE
+        value: "90"
+      - key: AUTO_PUBLISH_MIN_CATEGORY_CONFIDENCE
+        value: "90"
+      - key: AUTO_PUBLISH_MIN_FACT_CONFIDENCE
+        value: "90"
+      - key: AUTO_PUBLISH_TRUSTED_SOURCES
+        value: "BBC Sport Football,The Guardian Football,Sky Sports Football,ESPN Soccer,Sports.uz"
       - key: MIN_FOOTBALL_CONFIDENCE
         value: "85"
       - key: MIN_CATEGORY_CONFIDENCE

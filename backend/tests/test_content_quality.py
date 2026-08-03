@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from app.database import Base
 from app.models import Article
 from app.services.content_quality import (
+    analysis_is_auto_publishable,
     analysis_is_publishable,
     cleanup_existing_articles,
     infer_category,
@@ -162,6 +163,46 @@ class ContentQualityTests(unittest.TestCase):
         )
         self.assertFalse(publishable)
         self.assertIn("fakt confidence past", reasons)
+
+    def test_auto_publish_gate_requires_90_confidence_and_trusted_source(self):
+        analysis = {
+            "football_confidence": 95,
+            "category_confidence": 92,
+            "fact_confidence": 94,
+            "ahamiyati": 3,
+        }
+        self.assertTrue(
+            analysis_is_auto_publishable(
+                analysis,
+                source_name="BBC Sport Football",
+                source_url="https://www.bbc.com/sport/football/articles/example",
+            )[0]
+        )
+
+        low_fact = dict(analysis, fact_confidence=89)
+        publishable, reasons = analysis_is_auto_publishable(
+            low_fact,
+            source_name="BBC Sport Football",
+            source_url="https://www.bbc.com/sport/football/articles/example",
+        )
+        self.assertFalse(publishable)
+        self.assertTrue(any("fakt confidence" in reason for reason in reasons))
+
+    def test_auto_publish_gate_rejects_missing_or_untrusted_source(self):
+        analysis = {
+            "football_confidence": 95,
+            "category_confidence": 95,
+            "fact_confidence": 95,
+            "ahamiyati": 3,
+        }
+        publishable, reasons = analysis_is_auto_publishable(
+            analysis,
+            source_name="Unknown Blog",
+            source_url="http://example.com/story",
+        )
+        self.assertFalse(publishable)
+        self.assertTrue(any("HTTPS" in reason for reason in reasons))
+        self.assertTrue(any("ishonchli ro'yxatda" in reason for reason in reasons))
 
     def test_category_override(self):
         self.assertEqual(
