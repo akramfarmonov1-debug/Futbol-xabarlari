@@ -19,11 +19,24 @@ def record_ingestion_decision(
     commit: bool = True,
 ) -> IngestionDecision:
     """Bir URL uchun oxirgi qarorni insert yoki update qiladi."""
-    entry = (
-        db.query(IngestionDecision)
-        .filter(IngestionDecision.original_url == original_url)
-        .first()
+    # SessionLocal autoflush=False ishlatadi. Shu batch ichida hali flush
+    # qilinmagan bir xil URL query'da ko'rinmaydi, shuning uchun avval
+    # session pending obyektlarini tekshiramiz.
+    entry = next(
+        (
+            pending
+            for pending in db.new
+            if isinstance(pending, IngestionDecision)
+            and pending.original_url == original_url
+        ),
+        None,
     )
+    if entry is None:
+        entry = (
+            db.query(IngestionDecision)
+            .filter(IngestionDecision.original_url == original_url)
+            .first()
+        )
     if entry is None:
         entry = IngestionDecision(original_url=original_url)
         db.add(entry)
