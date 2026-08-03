@@ -15,6 +15,7 @@ export default function AdminPage() {
   const [status, setStatus] = useState("pending");
   const [articles, setArticles] = useState([]);
   const [stats, setStats] = useState(null);
+  const [ingestion, setIngestion] = useState([]);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -48,12 +49,14 @@ export default function AdminPage() {
 
   const load = useCallback(async () => {
     try {
-      const [list, statistics] = await Promise.all([
+      const [list, statistics, decisions] = await Promise.all([
         api(`/api/admin/articles?status=${status}`),
         api("/api/admin/stats"),
+        api("/api/admin/ingestion?limit=20"),
       ]);
       setArticles(list);
       setStats(statistics);
+      setIngestion(decisions);
     } catch (error) {
       setMessage(error.message);
     }
@@ -113,12 +116,13 @@ export default function AdminPage() {
       </div>
 
       {stats && (
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {[
             ["Jami", stats.jami],
             ["Kutilmoqda", stats.kutilmoqda],
             ["Chop etilgan", stats.chop_etilgan],
             ["Rad etilgan", stats.rad_etilgan],
+            ["Tekshiruv kerak", stats.tekshiruv_talab],
             ["Telegramda", stats.telegramga_yuborilgan],
           ].map(([label, value]) => (
             <div key={label} className="rounded-xl border border-slate-800 p-4 text-center">
@@ -163,6 +167,39 @@ export default function AdminPage() {
             </div>
             <h2 className="mb-1 font-semibold">{article.title}</h2>
             <p className="mb-3 text-sm text-slate-400">{article.summary}</p>
+            {article.quality && (
+              <div className="mb-4 rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs">
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <span className="rounded bg-emerald-500/10 px-2 py-1 text-emerald-300">
+                    Futbol {article.quality.football_confidence}%
+                  </span>
+                  <span className="rounded bg-sky-500/10 px-2 py-1 text-sky-300">
+                    Kategoriya {article.quality.category_confidence}%
+                  </span>
+                  <span className="rounded bg-violet-500/10 px-2 py-1 text-violet-300">
+                    Fakt {article.quality.fact_confidence}%
+                  </span>
+                  <span className="rounded bg-slate-800 px-2 py-1 text-slate-300">
+                    {article.quality.decision}
+                  </span>
+                  <span className="rounded bg-slate-800 px-2 py-1 text-slate-300">
+                    {article.sources?.length || 0} manba
+                  </span>
+                </div>
+                {article.quality.event_key && (
+                  <div className="mb-1 text-slate-500">
+                    Event: {article.quality.event_key}
+                  </div>
+                )}
+                {(article.quality.reasons || []).length > 0 && (
+                  <ul className="list-disc space-y-1 pl-4 text-amber-300">
+                    {article.quality.reasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 text-sm">
               {article.status !== "published" && (
                 <button
@@ -206,6 +243,36 @@ export default function AdminPage() {
           </div>
         ))}
       </div>
+
+      <section className="mt-10">
+        <h2 className="mb-3 text-lg font-bold">Pipeline qarorlari</h2>
+        <div className="overflow-x-auto rounded-xl border border-slate-800">
+          <table className="w-full min-w-[720px] text-left text-xs">
+            <thead className="bg-slate-900 text-slate-400">
+              <tr>
+                <th className="p-3">Qaror</th>
+                <th className="p-3">Manba</th>
+                <th className="p-3">Sarlavha</th>
+                <th className="p-3">Sabab</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ingestion.map((item) => (
+                <tr key={item.id} className="border-t border-slate-800 align-top">
+                  <td className="p-3 font-semibold text-emerald-300">{item.decision}</td>
+                  <td className="p-3 text-slate-400">{item.source_name}</td>
+                  <td className="p-3">
+                    <a href={item.original_url} target="_blank" rel="noopener noreferrer" className="hover:text-sky-400">
+                      {item.original_title}
+                    </a>
+                  </td>
+                  <td className="p-3 text-amber-200">{(item.reasons || []).join("; ") || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

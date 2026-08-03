@@ -15,9 +15,10 @@ import httpx
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
-from ..models import Article
+from ..models import Article, ArticleSource
 from ..utils import title_hash
 from .content_quality import is_football_content
+from .ingestion_log import record_ingestion_decision
 
 # "keywords" — ixtiyoriy regex: faqat mos kelgan yozuvlar olinadi
 # (aralash sport manbalaridan faqat futbolni ajratish uchun).
@@ -286,6 +287,7 @@ def upgrade_existing_images(db: Session) -> int:
 def collect_news(db: Session, per_feed: int = 5) -> list[dict]:
     """RSS/Atom manbalardan yangi (bazada yo'q) yangiliklarni qaytaradi."""
     existing_urls = {u for (u,) in db.query(Article.original_url).all()}
+    existing_urls.update(u for (u,) in db.query(ArticleSource.original_url).all())
     existing_hashes = {title_hash(t) for (t,) in db.query(Article.original_title).all()}
     cutoff = datetime.utcnow() - timedelta(days=MAX_NEWS_AGE_DAYS)
 
@@ -302,21 +304,32 @@ def collect_news(db: Session, per_feed: int = 5) -> list[dict]:
 
             # Manba filtri va umumiy sifat darvozasi: faqat futbol.
             keywords = feed.get("keywords")
-            if keywords:
-                entries = [
-                    e for e in entries
-                    if re.search(keywords, f"{e['title']} {e['summary']}", re.IGNORECASE)
-                ]
-            entries = [
-                entry
-                for entry in entries
-                if is_football_content(
+            football_entries = []
+            for entry in entries:
+                keyword_match = not keywords or re.search(
+                    keywords,
+                    f"{entry['title']} {entry['summary']}",
+                    re.IGNORECASE,
+                )
+                football_match = keyword_match and is_football_content(
                     entry["title"],
                     entry["summary"],
                     entry["url"],
                     feed["name"],
                 )
-            ]
+                if football_match:
+                    football_entries.append(entry)
+                elif entry["url"]:
+                    record_ingestion_decision(
+                        db,
+                        original_url=entry["url"],
+                        original_title=entry["title"],
+                        source_name=feed["name"],
+                        decision="non_football",
+                        reasons=["RSS sport/kontekst filtri futbolga aloqador deb topmadi"],
+                        commit=False,
+                    )
+            entries = football_entries
 
             entries.sort(
                 key=lambda entry: entry["published"] or datetime.min,
@@ -330,6 +343,15 @@ def collect_news(db: Session, per_feed: int = 5) -> list[dict]:
                     continue
                 # Dublikat: URL yoki normallashtirilgan sarlavha bo'yicha
                 if url in existing_urls or title_hash(title) in existing_hashes:
+                    record_ingestion_decision(
+                        db,
+                        original_url=url,
+                        original_title=title,
+                        source_name=feed["name"],
+                        decision="duplicate_url_or_title",
+                        reasons=["URL yoki normallashtirilgan sarlavha avval qayd etilgan"],
+                        commit=False,
+                    )
                     continue
 
                 fresh.append({
@@ -343,6 +365,7 @@ def collect_news(db: Session, per_feed: int = 5) -> list[dict]:
                 existing_urls.add(url)
                 existing_hashes.add(title_hash(title))
 
+    db.commit()
     return sorted(
         fresh,
         key=lambda entry: entry["published_at"] or datetime.min,

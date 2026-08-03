@@ -21,7 +21,7 @@ from .config import (
     TELEGRAM_BOT_TOKEN,
 )
 from .database import Base, SessionLocal, engine
-from .models import Article, Category
+from .models import Article, ArticleQuality, Category
 from .seed import seed_categories
 from .services.ai_agent import analyze_news
 from .services.collector import (
@@ -36,6 +36,11 @@ from .services.content_quality import (
     is_football_content,
 )
 from .services.image_gen import generate_image
+from .services.ingestion_log import record_ingestion_decision
+from .services.event_dedup import (
+    attach_article_source,
+    find_duplicate_article,
+)
 from .services.runtime_lock import (
     PIPELINE_LOCK_ID,
     release_runtime_lock,
@@ -88,7 +93,45 @@ def _run_pipeline(per_feed: int = 5) -> int:
                 news["url"],
                 news["source"],
             ):
+                record_ingestion_decision(
+                    db,
+                    original_url=news["url"],
+                    original_title=news["title"],
+                    source_name=news["source"],
+                    decision="non_football",
+                    reasons=["Pipeline futbol filtri rad etdi"],
+                )
                 print("   ✗ Futbolga aloqasiz xabar o'tkazib yuborildi")
+                continue
+
+            duplicate, duplicate_match = find_duplicate_article(
+                db,
+                news["title"],
+                news["content"],
+                news["published_at"],
+            )
+            if duplicate:
+                attach_article_source(
+                    db,
+                    duplicate,
+                    original_url=news["url"],
+                    original_title=news["title"],
+                    source_name=news["source"],
+                    source_published_at=news["published_at"],
+                )
+                record_ingestion_decision(
+                    db,
+                    original_url=news["url"],
+                    original_title=news["title"],
+                    source_name=news["source"],
+                    decision="duplicate_event",
+                    reasons=list(duplicate_match.reasons),
+                    matched_article_id=duplicate.id,
+                )
+                print(
+                    f"   ↪ Dublikat voqea: {duplicate.slug} "
+                    f"(score={duplicate_match.score})"
+                )
                 continue
             try:
                 analysis = analyze_news(
@@ -98,17 +141,18 @@ def _run_pipeline(per_feed: int = 5) -> int:
                     source=news["source"],
                 )
             except Exception as error:
+                record_ingestion_decision(
+                    db,
+                    original_url=news["url"],
+                    original_title=news["title"],
+                    source_name=news["source"],
+                    decision="ai_error",
+                    reasons=[str(error)[:500]],
+                )
                 print(f"   ✗ Tahlil xatosi: {error}")
                 continue
 
-            publishable, quality_reasons = analysis_is_publishable(analysis)
-            if not publishable:
-                print(
-                    "   ✗ Sifat nazoratidan o'tmadi: "
-                    + ", ".join(quality_reasons)
-                )
-                continue
-
+            ai_category = analysis["kategoriya"]
             analysis["kategoriya"] = infer_category(
                 " ".join(
                     [
@@ -120,12 +164,70 @@ def _run_pipeline(per_feed: int = 5) -> int:
                 ),
                 analysis["kategoriya"],
             )
+            if analysis["kategoriya"] != ai_category:
+                analysis["category_confidence"] = min(
+                    analysis.get("category_confidence", 0),
+                    70,
+                )
+
+            publishable, quality_reasons = analysis_is_publishable(
+                analysis,
+                source_text=f"{news['title']} {news['content']}",
+                require_structured=True,
+            )
+            if analysis["kategoriya"] != ai_category:
+                quality_reasons.append(
+                    f"kategoriya validator tomonidan o'zgartirildi: "
+                    f"{ai_category} -> {analysis['kategoriya']}"
+                )
+                publishable = False
+            if not publishable:
+                print(
+                    "   ⚠ Qo'lda tekshiruvga yuborildi: "
+                    + ", ".join(quality_reasons)
+                )
+
+            # Tarjima qilingan sarlavha va entitylar raw RSS bosqichida
+            # ko'rinmagan dublikat voqeani aniqlashga yordam beradi.
+            duplicate, duplicate_match = find_duplicate_article(
+                db,
+                f"{news['title']} {analysis['sarlavha']}",
+                f"{news['content']} {analysis['xulosa']}",
+                news["published_at"],
+            )
+            if duplicate:
+                attach_article_source(
+                    db,
+                    duplicate,
+                    original_url=news["url"],
+                    original_title=news["title"],
+                    source_name=news["source"],
+                    source_published_at=news["published_at"],
+                )
+                record_ingestion_decision(
+                    db,
+                    original_url=news["url"],
+                    original_title=news["title"],
+                    source_name=news["source"],
+                    decision="duplicate_event",
+                    reasons=list(duplicate_match.reasons),
+                    matched_article_id=duplicate.id,
+                )
+                print(
+                    f"   ↪ AI tahlilidan keyin dublikat: {duplicate.slug} "
+                    f"(score={duplicate_match.score})"
+                )
+                continue
 
             slug = slugify(analysis["sarlavha"])
             if db.query(Article).filter(Article.slug == slug).first():
                 slug = f"{slug}-{saved + 1}"
 
-            auto_publish = AUTO_PUBLISH and analysis["ahamiyati"] >= AUTO_PUBLISH_MIN_IMPORTANCE
+            auto_publish = (
+                publishable
+                and AUTO_PUBLISH
+                and analysis["ahamiyati"] >= AUTO_PUBLISH_MIN_IMPORTANCE
+            )
 
             # Rasm zanjiri: yuqori sifatli RSS/og:image -> (ixtiyoriy) Gemini
             image_url = improve_image_url(
@@ -158,6 +260,37 @@ def _run_pipeline(per_feed: int = 5) -> int:
             )
             db.add(article)
             db.commit()
+            db.refresh(article)
+            article_quality = ArticleQuality(
+                article_id=article.id,
+                football_confidence=analysis.get("football_confidence", 0),
+                category_confidence=analysis.get("category_confidence", 0),
+                fact_confidence=analysis.get("fact_confidence", 0),
+                event_key=analysis.get("event_key", ""),
+                entities=analysis.get("entities", []),
+                facts=analysis.get("facts", []),
+                decision="ready" if publishable else "needs_review",
+                reasons=quality_reasons,
+            )
+            db.add(article_quality)
+            db.commit()
+            attach_article_source(
+                db,
+                article,
+                original_url=news["url"],
+                original_title=news["title"],
+                source_name=news["source"],
+                source_published_at=news["published_at"],
+            )
+            record_ingestion_decision(
+                db,
+                original_url=news["url"],
+                original_title=news["title"],
+                source_name=news["source"],
+                decision="ready" if publishable else "needs_review",
+                reasons=quality_reasons,
+                matched_article_id=article.id,
+            )
             saved += 1
 
             if auto_publish:
