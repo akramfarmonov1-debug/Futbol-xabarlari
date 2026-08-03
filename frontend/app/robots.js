@@ -6,9 +6,10 @@ export default function robots() {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/qidiruv"],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    // Admin va qidiruv sahifalari o'z metadata'sida `noindex` beradi.
+    // Ularni robots.txt orqali bloklasak, crawler noindex tegini ko'ra olmaydi.
+    sitemap: [`${SITE_URL}/sitemap.xml`, `${SITE_URL}/news-sitemap.xml`],
   };
 }

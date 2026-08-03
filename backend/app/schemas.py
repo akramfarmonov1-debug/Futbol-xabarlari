@@ -70,6 +70,13 @@ class ArticleOut(BaseModel):
     created_at: datetime
 
 
+class SitemapArticleOut(BaseModel):
+    slug: str
+    title: str
+    published_at: datetime | None
+    category_slug: str | None
+
+
 class AdminArticleOut(ArticleOut):
     sources: list[ArticleSourceOut] = Field(default_factory=list)
     quality: ArticleQualityOut | None = None
