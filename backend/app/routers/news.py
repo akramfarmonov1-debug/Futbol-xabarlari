@@ -1,15 +1,15 @@
 """Ommaviy yangiliklar API — faqat chop etilgan maqolalar."""
 
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
 from ..models import Article, Category
-from ..schemas import ArticleOut
+from ..schemas import ArticleOut, SitemapArticleOut
 
 router = APIRouter(prefix="/api/news", tags=["news"])
 
@@ -69,6 +69,31 @@ def trend_topics(db: Session = Depends(get_db), kunlar: int = 7, limit: int = 15
     articles = published(db).filter(Article.published_at >= since).all()
     counter = Counter(tag for a in articles for tag in (a.tags or []))
     return [{"teg": tag, "soni": count} for tag, count in counter.most_common(limit)]
+
+
+@router.get("/sitemap", response_model=list[SitemapArticleOut])
+def sitemap_articles(
+    db: Session = Depends(get_db),
+    hours: int | None = Query(default=None, ge=1, le=168),
+):
+    """Sitemaplar uchun matnsiz, yengil maqola ro'yxati."""
+    query = published(db).options(joinedload(Article.category))
+    if hours is not None:
+        query = query.filter(
+            Article.published_at
+            >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
+        )
+
+    articles = query.order_by(Article.published_at.desc()).all()
+    return [
+        SitemapArticleOut(
+            slug=article.slug,
+            title=article.title,
+            published_at=article.published_at,
+            category_slug=article.category.slug if article.category else None,
+        )
+        for article in articles
+    ]
 
 
 @router.get("/search", response_model=list[ArticleOut])
