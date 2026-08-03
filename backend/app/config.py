@@ -50,14 +50,17 @@ def _bool(name: str, default: str) -> bool:
     return os.getenv(name, default).strip().lower() in ("1", "true", "yes", "ha")
 
 
-# Avto-chop etish: pipeline maqolalarni admin tasdig'isiz to'g'ridan-to'g'ri
-# saytga chiqaradi. O'chirish uchun: AUTO_PUBLISH=false
-AUTO_PUBLISH = _bool("AUTO_PUBLISH", "true")
+# Avto-chop etish xavfsiz standart sifatida o'chiq. Faqat quality gate
+# ishonchli deb topgan maqolalar uchun production'da ongli ravishda yoqiladi.
+AUTO_PUBLISH = _bool("AUTO_PUBLISH", "false")
 # Faqat shu bahodan yuqori maqolalar avto-chop etiladi (qolganlari pending)
 AUTO_PUBLISH_MIN_IMPORTANCE = int(os.getenv("AUTO_PUBLISH_MIN_IMPORTANCE", "1"))
+MIN_FOOTBALL_CONFIDENCE = int(os.getenv("MIN_FOOTBALL_CONFIDENCE", "85"))
+MIN_CATEGORY_CONFIDENCE = int(os.getenv("MIN_CATEGORY_CONFIDENCE", "75"))
+MIN_FACT_CONFIDENCE = int(os.getenv("MIN_FACT_CONFIDENCE", "80"))
 
 # Muhim yangiliklarni Telegram kanalga avtomatik yuborish
-AUTO_TELEGRAM = _bool("AUTO_TELEGRAM", "true")
+AUTO_TELEGRAM = _bool("AUTO_TELEGRAM", "false")
 AUTO_TELEGRAM_MIN_IMPORTANCE = int(os.getenv("AUTO_TELEGRAM_MIN_IMPORTANCE", "4"))
 
 # Rasm topilmaganda Gemini bilan generatsiya qilish (pullik — standart o'chiq)

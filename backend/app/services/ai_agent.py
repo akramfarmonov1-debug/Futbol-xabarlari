@@ -37,7 +37,11 @@ SYSTEM_PROMPT = """**Rol:** Sen jahon futboli bo'yicha yetakchi o'zbek sport jur
 7. **Kategoriyalash:** "kategoriya" maydonida yangilik qaysi yo'nalishga tegishli ekanini belgila.
 8. **Tuzilma:** Javobni doim qat'iy JSON formatida qaytar.
 9. **Tabiiy til:** Sarlavha va maqolani so'zma-so'z tarjima qilma. Sport iboralarini kontekstga mos o'zbekcha yoz (masalan, "dugout" — "texnik hudud"). Rasmiy qisqartmalardan tashqari katta harflarda inglizcha so'z ishlatma.
-10. **Faktlar:** Asl matnda yo'q futbolchi, klub, natija, sana yoki iqtibosni o'ylab topma. Noaniq ma'lumotni qat'iy fakt sifatida yozma."""
+10. **Faktlar:** Asl matnda yo'q futbolchi, klub, natija, sana yoki iqtibosni o'ylab topma. Noaniq ma'lumotni qat'iy fakt sifatida yozma.
+11. **Entitylar:** "entities" maydonida voqeaning asosiy futbolchi, klub, turnir yoki tashkilot nomlarini kanonik yozuvda ber.
+12. **Fakt dalili:** "facts" ichidagi har bir fakt uchun "evidence" maydoniga berilgan asl matndan aynan ko'chirilgan qisqa dalil yoz. Matnda yo'q dalil yaratma.
+13. **Confidence:** football_confidence, category_confidence va fact_confidence maydonlarini 0-100 oralig'ida konservativ bahola. Manba qisqa, noaniq yoki ziddiyatli bo'lsa ballni pasaytir.
+14. **Event key:** "event_key" maydonida voqea turini va asosiy entitylarni kichik harflarda qisqa yoz (masalan: "transfer:valentin-barco:chelsea")."""
 
 CATEGORY_SLUGS = [
     "transferlar", "premyer-liga", "la-liga", "seriya-a", "bundesliga",
@@ -56,10 +60,30 @@ ANALYSIS_SCHEMA = {
         "amaliy_ahamiyat": {"type": "string"},
         "teglar": {"type": "array", "items": {"type": "string"}},
         "ahamiyati": {"type": "integer"},
+        "entities": {"type": "array", "items": {"type": "string"}},
+        "facts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "subject": {"type": "string"},
+                    "predicate": {"type": "string"},
+                    "value": {"type": "string"},
+                    "evidence": {"type": "string"},
+                },
+                "required": ["subject", "predicate", "value", "evidence"],
+            },
+        },
+        "event_key": {"type": "string"},
+        "football_confidence": {"type": "integer"},
+        "category_confidence": {"type": "integer"},
+        "fact_confidence": {"type": "integer"},
     },
     "required": [
         "kategoriya", "sarlavha", "seo_sarlavha", "xulosa",
         "maqola", "amaliy_ahamiyat", "teglar", "ahamiyati",
+        "entities", "facts", "event_key", "football_confidence",
+        "category_confidence", "fact_confidence",
     ],
     "additionalProperties": False,
 }
@@ -70,6 +94,12 @@ def _validate(analysis: dict) -> dict:
     analysis["ahamiyati"] = max(1, min(5, int(analysis.get("ahamiyati", 3))))
     if analysis.get("kategoriya") not in CATEGORY_SLUGS:
         analysis["kategoriya"] = "jahon-futboli"
+    for field in (
+        "football_confidence",
+        "category_confidence",
+        "fact_confidence",
+    ):
+        analysis[field] = max(0, min(100, int(analysis.get(field, 0))))
     return normalize_analysis(analysis)
 
 

@@ -1,6 +1,6 @@
 # 🤖 Futbol Xabar
 
-Sun'iy intellektga oid eng muhim yangiliklarni dunyodagi ishonchli manbalardan **avtomatik yig'ib**, AI yordamida **o'zbek tiliga moslashtirib**, **web sayt** va **Telegram bot** orqali yetkazib beruvchi platforma (MVP).
+Dunyodagi muhim futbol yangiliklarini ishonchli manbalardan **yig'ib**, AI yordamida **o'zbek tiliga moslashtirib**, sifat nazoratidan keyin **web sayt** va **Telegram bot** orqali yetkazuvchi platforma.
 
 ## Arxitektura
 
@@ -8,7 +8,7 @@ Sun'iy intellektga oid eng muhim yangiliklarni dunyodagi ishonchli manbalardan *
 ┌─────────────────┐     ┌──────────────────────┐     ┌───────────────┐
 │  RSS manbalar   │ --> │  AI Agent (pipeline) │ --> │  PostgreSQL / │
 │ BBC, Guardian,   │     │  yig'ish → dublikat  │     │    SQLite     │
-│ TechCrunch, ... │     │  → Claude tahlili    │     │  (pending)    │
+│ Sky, ESPN, ...  │     │  → fakt tekshiruvi   │     │  (pending)    │
 └─────────────────┘     └──────────────────────┘     └───────┬───────┘
                                                              │ admin tasdiqlaydi
                         ┌──────────────┐    ┌────────────────┼────────────────┐
@@ -22,7 +22,7 @@ Sun'iy intellektga oid eng muhim yangiliklarni dunyodagi ishonchli manbalardan *
 |---|---|---|
 | Backend + REST API | FastAPI, SQLAlchemy, PostgreSQL/SQLite | `backend/` |
 | AI Agent | Gemini API (standart) yoki Claude API — strukturali JSON | `backend/app/services/ai_agent.py` |
-| Yangiliklar yig'uvchi | feedparser (RSS) + dublikat filtri | `backend/app/services/collector.py` |
+| Yangiliklar yig'uvchi | RSS/Atom parser + event dublikat filtri | `backend/app/services/collector.py` |
 | Frontend | Next.js 15, React 19, Tailwind CSS 4 | `frontend/` |
 | Admin panel | Next.js sahifasi (`/admin`) + Admin API | `frontend/app/admin/` |
 | Telegram bot | aiogram 3 | `bot/` |
@@ -36,9 +36,12 @@ Har bir inglizcha yangilik uchun AI model (standart: **Gemini `gemini-3.1-flash-
 - `seo_sarlavha` — SEO uchun optimallashtirilgan sarlavha
 - `xulosa` — 3-5 jumlalik qisqa xulosa
 - `maqola` — to'liq o'zbekcha maqola (3-6 paragraf)
-- `amaliy_ahamiyat` — "Bu nima degani?" (dasturchilar/biznes uchun)
+- `amaliy_ahamiyat` — "Bu nima degani?" (muxlis va jamoa istiqboli uchun)
 - `teglar` — 3-6 ta teg
 - `ahamiyati` — 1-5 baho
+- `entities` va `facts` — kanonik nomlar, structured faktlar va manbadagi dalil
+- `football_confidence`, `category_confidence`, `fact_confidence` — 0-100 sifat ballari
+- `event_key` — bir voqeani boshqa RSS manbalari bilan bog'lash kaliti
 
 Maqolalar `pending` holatida saqlanadi — **admin tasdiqlagachgina** saytga chiqadi.
 
@@ -140,12 +143,12 @@ To'liq interaktiv hujjatlar: `http://localhost:8000/docs`
 
 ## Ish oqimi (workflow)
 
-**Avtomatik rejim (standart, `AUTO_PUBLISH=true`):**
+**Moderatsiya rejimi (standart, `AUTO_PUBLISH=false`):**
 
 1. Backend fon pipeline'ini `PIPELINE_INTERVAL` bo'yicha ishga tushiradi
-2. RSS'dan yangi xabarlar yig'iladi, eskirganlari va dublikatlar filtrlanadi, tanlangan AI modeli har birini o'zbekcha maqolaga aylantiradi
-3. Maqolalar **darhol saytga chiqadi**; muhimlari (bahosi ≥ `AUTO_TELEGRAM_MIN_IMPORTANCE`, standart 4) **Telegram kanalga ham avtomatik yuboriladi**
-4. Admin `/admin` panelda faqat nazorat qiladi: xato maqolani tahrirlaydi yoki o'chiradi
+2. RSS'dan yangi xabarlar yig'iladi; ayni voqeaning boshqa manbasi yangi URL yaratmasdan canonical maqolaga bog'lanadi
+3. AI structured fakt, manbadagi evidence va confidence ballarini qaytaradi; validator kategoriya va dalillarni tekshiradi
+4. Maqola `pending` holatida saqlanadi, admin sifat sabablarini ko'rib tasdiqlaydi yoki rad etadi
 
 Render zero-downtime deploy vaqtida eski va yangi instance qisqa muddat birga
 ishlasa ham PostgreSQL advisory lock bot va pipeline'ning faqat bitta nusxasini
@@ -155,19 +158,22 @@ Sozlamalar (`.env`):
 
 | O'zgaruvchi | Standart | Tavsif |
 |---|---|---|
-| `AUTO_PUBLISH` | `true` | `false` — maqolalar admin tasdig'ini kutadi |
+| `AUTO_PUBLISH` | `false` | Faqat quality gate'dan o'tgan maqolalarni avtomatik chiqarish uchun `true` qiling |
 | `AUTO_PUBLISH_MIN_IMPORTANCE` | `1` | Shu bahodan pastlari `pending`da qoladi |
-| `AUTO_TELEGRAM` | `true` | Muhim yangiliklarni kanalga avto-yuborish |
+| `MIN_FOOTBALL_CONFIDENCE` | `85` | Futbolga aloqadorlik uchun minimal confidence |
+| `MIN_CATEGORY_CONFIDENCE` | `75` | Kategoriya uchun minimal confidence |
+| `MIN_FACT_CONFIDENCE` | `80` | Faktlar uchun minimal confidence |
+| `AUTO_TELEGRAM` | `false` | Muhim yangiliklarni kanalga avto-yuborish |
 | `AUTO_TELEGRAM_MIN_IMPORTANCE` | `4` | Kanalga yuborish uchun minimal baho |
 | `PIPELINE_INTERVAL` | `3600` | Pipeline qayta ishga tushish oralig'i, soniyada |
 | `MAX_NEWS_AGE_DAYS` | `3` | RSS'dan olinadigan xabarlarning maksimal yoshi |
 
-**Moderatsiya rejimi (`AUTO_PUBLISH=false`):** maqolalar `pending` holatda saqlanadi, admin `/admin` sahifasida ko'rib **Tasdiqlash** bosgachgina saytga chiqadi va **Telegramga** tugmasi bilan kanalga yuboradi.
+**Avtomatik rejim (`AUTO_PUBLISH=true`)** faqat structured quality gate'dan o'tgan materiallarni chiqaradi. Kategoriya override, past confidence yoki manbada topilmagan fakt dalili maqolani baribir `pending` holatida qoldiradi.
 
 ## Kelajakdagi rejalar (TZ bo'yicha)
 
 - Redis kesh, email obuna, push bildirishnomalar
-- AI Tool katalogi, tadbirlar taqvimi, ish o'rinlari, kurslar
+- Legionerlar kuzatuvi, transfer tracker, klub va futbolchi sahifalari
 - Ovozli dayjest, YouTube Shorts, avtomatik SMM postlar
 - Premium obuna va reklama moduli
 - Mobil ilova

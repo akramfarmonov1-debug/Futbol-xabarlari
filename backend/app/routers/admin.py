@@ -8,8 +8,13 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import require_admin
-from ..models import Article, Category
-from ..schemas import ArticleOut, ArticleUpdate, StatsOut
+from ..models import Article, ArticleQuality, Category, IngestionDecision
+from ..schemas import (
+    AdminArticleOut,
+    ArticleUpdate,
+    IngestionDecisionOut,
+    StatsOut,
+)
 from ..services.telegram import send_to_channel
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -22,7 +27,7 @@ def get_article(db: Session, article_id: int) -> Article:
     return article
 
 
-@router.get("/articles", response_model=list[ArticleOut])
+@router.get("/articles", response_model=list[AdminArticleOut])
 def list_articles(db: Session = Depends(get_db), status: str | None = None, limit: int = 50, offset: int = 0):
     query = db.query(Article)
     if status:
@@ -30,7 +35,17 @@ def list_articles(db: Session = Depends(get_db), status: str | None = None, limi
     return query.order_by(Article.created_at.desc()).offset(offset).limit(limit).all()
 
 
-@router.put("/articles/{article_id}", response_model=ArticleOut)
+@router.get("/ingestion", response_model=list[IngestionDecisionOut])
+def ingestion_log(db: Session = Depends(get_db), limit: int = 50):
+    return (
+        db.query(IngestionDecision)
+        .order_by(IngestionDecision.updated_at.desc())
+        .limit(min(max(limit, 1), 200))
+        .all()
+    )
+
+
+@router.put("/articles/{article_id}", response_model=AdminArticleOut)
 def update_article(article_id: int, data: ArticleUpdate, db: Session = Depends(get_db)):
     article = get_article(db, article_id)
     for field, value in data.model_dump(exclude_unset=True).items():
@@ -40,21 +55,25 @@ def update_article(article_id: int, data: ArticleUpdate, db: Session = Depends(g
     return article
 
 
-@router.post("/articles/{article_id}/approve", response_model=ArticleOut)
+@router.post("/articles/{article_id}/approve", response_model=AdminArticleOut)
 def approve_article(article_id: int, db: Session = Depends(get_db)):
     """Maqolani tasdiqlash — saytga chiqariladi."""
     article = get_article(db, article_id)
     article.status = "published"
     article.published_at = datetime.utcnow()
+    if article.quality:
+        article.quality.decision = "approved_manual"
     db.commit()
     db.refresh(article)
     return article
 
 
-@router.post("/articles/{article_id}/reject", response_model=ArticleOut)
+@router.post("/articles/{article_id}/reject", response_model=AdminArticleOut)
 def reject_article(article_id: int, db: Session = Depends(get_db)):
     article = get_article(db, article_id)
     article.status = "rejected"
+    if article.quality:
+        article.quality.decision = "rejected_manual"
     db.commit()
     db.refresh(article)
     return article
@@ -97,5 +116,8 @@ def stats(db: Session = Depends(get_db)):
         chop_etilgan=db.query(Article).filter(Article.status == "published").count(),
         rad_etilgan=db.query(Article).filter(Article.status == "rejected").count(),
         telegramga_yuborilgan=db.query(Article).filter(Article.sent_to_telegram.is_(True)).count(),
+        tekshiruv_talab=db.query(ArticleQuality).filter(
+            ArticleQuality.decision == "needs_review"
+        ).count(),
         kategoriyalar_boyicha=by_category,
     )

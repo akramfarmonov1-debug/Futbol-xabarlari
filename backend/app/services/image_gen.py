@@ -24,9 +24,10 @@ def generate_image(title: str, slug: str) -> str | None:
         return None
 
     prompt = (
-        "Create a clean, modern editorial illustration for a technology news "
-        f"article titled: \"{title}\". Abstract tech aesthetic, blue and dark "
-        "tones, suitable as a news cover image. No text, no letters, no logos."
+        "Create a clean, modern editorial illustration for a football news "
+        f"article titled: \"{title}\". Dynamic stadium atmosphere, emerald and "
+        "dark tones, suitable as a serious sports news cover. Do not depict a "
+        "recognizable real person. No text, no letters, no club or sponsor logos."
     )
 
     url = (

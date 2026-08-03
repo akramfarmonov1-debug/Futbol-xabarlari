@@ -6,6 +6,11 @@ from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import Session
 
 from ..models import Article
+from ..config import (
+    MIN_CATEGORY_CONFIDENCE,
+    MIN_FACT_CONFIDENCE,
+    MIN_FOOTBALL_CONFIDENCE,
+)
 
 
 FOOTBALL_TERMS = re.compile(
@@ -96,6 +101,23 @@ def normalize_analysis(analysis: dict) -> dict:
         for tag in (analysis.get("teglar") or [])
         if normalize_text(tag)
     ][:6]
+    analysis["entities"] = [
+        normalize_text(entity)
+        for entity in (analysis.get("entities") or [])
+        if normalize_text(entity)
+    ][:12]
+    normalized_facts = []
+    for fact in analysis.get("facts") or []:
+        if not isinstance(fact, dict):
+            continue
+        normalized_facts.append(
+            {
+                key: normalize_text(fact.get(key))
+                for key in ("subject", "predicate", "value", "evidence")
+            }
+        )
+    analysis["facts"] = normalized_facts[:12]
+    analysis["event_key"] = normalize_text(analysis.get("event_key")).lower()[:300]
     return analysis
 
 
@@ -127,7 +149,15 @@ def is_football_content(
     return bool(FOOTBALL_TERMS.search(text))
 
 
-def analysis_is_publishable(analysis: dict) -> tuple[bool, list[str]]:
+def _evidence_text(value: str) -> str:
+    return re.sub(r"[^a-z0-9а-яёўқғҳ]+", " ", value.lower()).strip()
+
+
+def analysis_is_publishable(
+    analysis: dict,
+    source_text: str = "",
+    require_structured: bool = False,
+) -> tuple[bool, list[str]]:
     """AI maqolasini avtomatik nashrdan oldin minimal sifatdan o'tkazadi."""
     reasons: list[str] = []
     title = normalize_text(analysis.get("sarlavha"))
@@ -170,25 +200,99 @@ def analysis_is_publishable(analysis: dict) -> tuple[bool, list[str]]:
             + ", ".join(sorted(unexpected_acronyms))
         )
 
+    if require_structured:
+        confidence_rules = (
+            ("football_confidence", MIN_FOOTBALL_CONFIDENCE, "futbol confidence past"),
+            ("category_confidence", MIN_CATEGORY_CONFIDENCE, "kategoriya confidence past"),
+            ("fact_confidence", MIN_FACT_CONFIDENCE, "fakt confidence past"),
+        )
+        for field, minimum, reason in confidence_rules:
+            try:
+                confidence = int(analysis.get(field, 0))
+            except (TypeError, ValueError):
+                confidence = 0
+            if confidence < minimum:
+                reasons.append(reason)
+
+        entities = analysis.get("entities") or []
+        facts = analysis.get("facts") or []
+        if not entities:
+            reasons.append("entitylar ajratilmagan")
+        if not facts:
+            reasons.append("structured faktlar ajratilmagan")
+
+        normalized_source = _evidence_text(source_text)
+        for index, fact in enumerate(facts, 1):
+            if not isinstance(fact, dict):
+                reasons.append(f"{index}-fakt formati noto'g'ri")
+                continue
+            if not all(normalize_text(fact.get(key)) for key in ("subject", "predicate", "value")):
+                reasons.append(f"{index}-fakt to'liq emas")
+            evidence = _evidence_text(str(fact.get("evidence") or ""))
+            if len(evidence) < 10 or evidence not in normalized_source:
+                reasons.append(f"{index}-fakt dalili manbada topilmadi")
+
+        if not normalize_text(analysis.get("event_key")):
+            reasons.append("event key yaratilmagan")
+
     return not reasons, reasons
 
 
 def infer_category(text: str, current: str) -> str:
-    """AI kategoriyasini aniq futbol kalitlari bilan qayta tekshiradi."""
+    """AI kategoriyasini voqea konteksti bilan qayta tekshiradi.
+
+    Yakka ``superliga`` yoki ``transfer`` so'zi kategoriya uchun yetarli emas:
+    WSL ham Superliga deb tarjima qilinishi, transfer so'zi esa inkor gapida
+    kelishi mumkin.
+    """
     haystack = normalize_text(text).lower()
+
+    uzbekistan_context = re.search(
+        r"o'zbekiston|o‘zbekiston|uzbekistan|o'zbek|o‘zbek|"
+        r"paxtakor|nasaf|navbahor|bunyodkor|sog'diyona|sog‘diyona|"
+        r"qo'qon|qo‘qon|okmk|neftchi|surxon|dinamo samarqand|\bpfl\b",
+        haystack,
+        re.IGNORECASE,
+    )
+    if uzbekistan_context:
+        return "uzbekiston-futboli"
+
+    transfer_denial = re.search(
+        r"transfer(?:lar)?\s+(?:haqida|bilan|ga)\b[^.!?]{0,80}"
+        r"(?:emas|yo'q|yo‘q|ma'lumot bermaydi|ma’lumot bermaydi|bog'liq emas|bog‘liq emas)",
+        haystack,
+        re.IGNORECASE,
+    )
+    transfer_action = re.search(
+        r"\b(?:sotib oldi|safiga qo'shildi|safiga qo‘shildi|"
+        r"o'tdi|o‘tdi|o'tishi|o‘tishi|imzoladi|shartnoma imzol|"
+        r"kelishuvga erish|taklif yubor|muzokara olib bor|ijaraga oldi|"
+        r"joins?|signs?|signed|agreed (?:a )?deal)\b",
+        haystack,
+        re.IGNORECASE,
+    )
+    if transfer_action and not transfer_denial:
+        return "transferlar"
+
     rules = (
-        ("transferlar", r"\btransfer|o'tdi|o‘tadi|shartnoma|imzoladi|joins?|signs?\b"),
-        ("premyer-liga", r"premyer|premier league|arsenal|chelsea|chelsi|liverpool|liverpul|manchester|tottenham"),
+        ("chempionlar-ligasi", r"champions league|chempionlar ligasi|\buefa cl\b"),
+        (
+            "premyer-liga",
+            r"premyer|premier league|arsenal|chelsea|chelsi|liverpool|liverpul|"
+            r"manchester|tottenham|bornmut|bournemouth|lids|leeds|newcastle|nyukasl",
+        ),
         ("la-liga", r"\bla liga\b|barselona|barcelona|real madrid|atletico"),
         ("seriya-a", r"\bserie a\b|\bseriya a\b|juventus|yuventus|inter|milan|napoli|roma"),
         ("bundesliga", r"bundesliga|bayern|dortmund|leverkusen"),
-        ("chempionlar-ligasi", r"champions league|chempionlar ligasi|\buefa cl\b"),
-        ("uzbekiston-futboli", r"o'zbekiston|o‘zbekiston|superliga|paxtakor|nasaf|navbahor|bunyodkor|\bpfl\b"),
         ("terma-jamoalar", r"terma jamoa|world cup|jahon chempionati|usmnt|uefa nations"),
     )
     for category, pattern in rules:
         if re.search(pattern, haystack, re.IGNORECASE):
             return category
+
+    # Oldingi noto'g'ri, faqat umumiy kalit so'zdan kelgan kategoriyani saqlamaymiz.
+    if current in {"uzbekiston-futboli", "transferlar"}:
+        return "jahon-futboli"
     return current
 
 

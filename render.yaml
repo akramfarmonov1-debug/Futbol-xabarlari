@@ -30,9 +30,15 @@ services:
       - key: TELEGRAM_CHANNEL_ID
         sync: false
       - key: AUTO_PUBLISH
-        value: "true"
+        value: "false"
+      - key: MIN_FOOTBALL_CONFIDENCE
+        value: "85"
+      - key: MIN_CATEGORY_CONFIDENCE
+        value: "75"
+      - key: MIN_FACT_CONFIDENCE
+        value: "80"
       - key: AUTO_TELEGRAM
-        value: "true"
+        value: "false"
       - key: PIPELINE_INTERVAL
         value: "3600"
       - key: THESPORTSDB_API_KEY

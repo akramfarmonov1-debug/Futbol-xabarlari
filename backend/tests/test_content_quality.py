@@ -86,6 +86,83 @@ class ContentQualityTests(unittest.TestCase):
         unnatural = dict(valid, maqola=valid["maqola"] + " Bu juda katta HYPE.")
         self.assertFalse(analysis_is_publishable(unnatural)[0])
 
+    def test_structured_quality_gate_requires_supported_facts(self):
+        source = (
+            "Chelsea signed Valentin Barco from Strasbourg on a seven-year contract."
+        )
+        valid = {
+            "sarlavha": "Chelsi Valentin Barkoni Strasburgdan sotib oldi",
+            "xulosa": "Chelsi Valentin Barkoni Strasburgdan sotib oldi. Klub futbolchi "
+            "bilan yetti yillik shartnoma imzolaganini rasman ma'lum qildi.",
+            "maqola": "Chelsi Valentin Barkoni Strasburgdan sotib olganini e'lon qildi. "
+            "Futbolchi klub bilan yetti yillik shartnoma imzoladi. Ushbu kelishuv "
+            "London klubining uzoq muddatli rejasiga mos keladi.\n\nBarko yangi jamoasi "
+            "mashg'ulotlariga qo'shiladi. Murabbiylar shtabi uning imkoniyatlarini "
+            "mavsumoldi tayyorgarlikda baholaydi. Futbolchi asosiy tarkib uchun kurashadi.",
+            "entities": ["Chelsea", "Valentin Barco", "Strasbourg"],
+            "facts": [
+                {
+                    "subject": "Valentin Barco",
+                    "predicate": "transferred from",
+                    "value": "Strasbourg to Chelsea",
+                    "evidence": "Chelsea signed Valentin Barco from Strasbourg",
+                }
+            ],
+            "event_key": "transfer:valentin-barco:chelsea",
+            "football_confidence": 98,
+            "category_confidence": 95,
+            "fact_confidence": 94,
+        }
+        self.assertTrue(
+            analysis_is_publishable(
+                valid,
+                source_text=source,
+                require_structured=True,
+            )[0]
+        )
+
+        unsupported = dict(valid)
+        unsupported["facts"] = [
+            dict(valid["facts"][0], evidence="Barco is 19 years old")
+        ]
+        publishable, reasons = analysis_is_publishable(
+            unsupported,
+            source_text=source,
+            require_structured=True,
+        )
+        self.assertFalse(publishable)
+        self.assertTrue(any("dalili" in reason for reason in reasons))
+
+    def test_structured_quality_gate_rejects_low_confidence(self):
+        analysis = {
+            "sarlavha": "Chelsi yangi transfer bo'yicha muzokara boshladi",
+            "xulosa": "Chelsi yangi transfer bo'yicha muzokara boshladi. Hozircha "
+            "kelishuv tafsilotlari va futbolchining qarori rasman ma'lum qilinmagan.",
+            "maqola": "Chelsi yangi futbolchi bo'yicha muzokara boshladi. Manba "
+            "kelishuv hali yakunlanmaganini qayd etdi. Shu sabab xabar hozircha "
+            "mish-mish darajasida qolmoqda.\n\nKlub va futbolchi vakillari muzokarani "
+            "davom ettirishi mumkin. Rasmiy bayonot berilmaguncha transfer amalga "
+            "oshgan deb bo'lmaydi. Qo'shimcha tafsilotlar keyinroq kutilmoqda.",
+            "entities": ["Chelsea"],
+            "facts": [{
+                "subject": "Chelsea",
+                "predicate": "is linked with",
+                "value": "a player",
+                "evidence": "Chelsea is linked with a player",
+            }],
+            "event_key": "rumour:chelsea:unknown-player",
+            "football_confidence": 95,
+            "category_confidence": 70,
+            "fact_confidence": 60,
+        }
+        publishable, reasons = analysis_is_publishable(
+            analysis,
+            source_text="Chelsea is linked with a player",
+            require_structured=True,
+        )
+        self.assertFalse(publishable)
+        self.assertIn("fakt confidence past", reasons)
+
     def test_category_override(self):
         self.assertEqual(
             infer_category(
@@ -93,6 +170,44 @@ class ContentQualityTests(unittest.TestCase):
                 "jahon-futboli",
             ),
             "premyer-liga",
+        )
+
+    def test_wsl_is_not_uzbekistan_football(self):
+        self.assertEqual(
+            infer_category(
+                "Ayollar Superligasi yakshanba oqshom o'yinlarini qaytaradi",
+                "uzbekiston-futboli",
+            ),
+            "jahon-futboli",
+        )
+
+    def test_uzbekistan_super_league_keeps_local_category(self):
+        self.assertEqual(
+            infer_category(
+                "O'zbekiston Superligasida Nasaf va Paxtakor uchrashadi",
+                "jahon-futboli",
+            ),
+            "uzbekiston-futboli",
+        )
+
+    def test_transfer_denial_is_not_a_transfer(self):
+        self.assertEqual(
+            infer_category(
+                "Bu viktorina bo'lib, transferlar haqida ma'lumot bermaydi. "
+                "Angliya Premyer-ligasi futbolchisini toping.",
+                "transferlar",
+            ),
+            "premyer-liga",
+        )
+
+    def test_positive_transfer_action_wins(self):
+        self.assertEqual(
+            infer_category(
+                "Chelsi Valentin Barconi Strasburgdan sotib oldi va uzoq "
+                "muddatli shartnoma imzoladi.",
+                "premyer-liga",
+            ),
+            "transferlar",
         )
 
     def test_existing_cleanup_rejects_other_sports_and_fixes_title(self):

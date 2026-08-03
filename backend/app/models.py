@@ -39,6 +39,15 @@ class Article(Base):
 
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
     category: Mapped[Category | None] = relationship(back_populates="articles")
+    sources: Mapped[list["ArticleSource"]] = relationship(
+        back_populates="article",
+        cascade="all, delete-orphan",
+    )
+    quality: Mapped["ArticleQuality | None"] = relationship(
+        back_populates="article",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
 
     # Holat oqimi: pending -> published (admin tasdiqlagach) yoki rejected
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
@@ -47,3 +56,70 @@ class Article(Base):
     source_published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class ArticleSource(Base):
+    """Bitta canonical maqolani tasdiqlovchi asl manbalar."""
+
+    __tablename__ = "article_sources"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey("articles.id", ondelete="CASCADE"),
+        index=True,
+    )
+    original_url: Mapped[str] = mapped_column(String(1000), unique=True, index=True)
+    original_title: Mapped[str] = mapped_column(String(500), default="")
+    source_name: Mapped[str] = mapped_column(String(200), default="")
+    source_published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    article: Mapped[Article] = relationship(back_populates="sources")
+
+
+class ArticleQuality(Base):
+    """AI tahlili va publish gate qarorining audit izi."""
+
+    __tablename__ = "article_quality"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    article_id: Mapped[int] = mapped_column(
+        ForeignKey("articles.id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+    )
+    football_confidence: Mapped[int] = mapped_column(Integer, default=0)
+    category_confidence: Mapped[int] = mapped_column(Integer, default=0)
+    fact_confidence: Mapped[int] = mapped_column(Integer, default=0)
+    event_key: Mapped[str] = mapped_column(String(300), default="", index=True)
+    entities: Mapped[list] = mapped_column(JSON, default=list)
+    facts: Mapped[list] = mapped_column(JSON, default=list)
+    decision: Mapped[str] = mapped_column(String(30), default="needs_review", index=True)
+    reasons: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    article: Mapped[Article] = relationship(back_populates="quality")
+
+
+class IngestionDecision(Base):
+    """Har bir RSS elementiga berilgan oxirgi pipeline qarori."""
+
+    __tablename__ = "ingestion_decisions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    original_url: Mapped[str] = mapped_column(String(1000), unique=True, index=True)
+    original_title: Mapped[str] = mapped_column(String(500), default="")
+    source_name: Mapped[str] = mapped_column(String(200), default="")
+    decision: Mapped[str] = mapped_column(String(40), index=True)
+    reasons: Mapped[list] = mapped_column(JSON, default=list)
+    matched_article_id: Mapped[int | None] = mapped_column(
+        ForeignKey("articles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
