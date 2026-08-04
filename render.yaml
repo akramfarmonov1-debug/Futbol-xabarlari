@@ -48,7 +48,7 @@ services:
       - key: MIN_FACT_CONFIDENCE
         value: "80"
       - key: AUTO_TELEGRAM
-        value: "false"
+        value: "true"
       - key: PIPELINE_INTERVAL
         value: "3600"
       - key: THESPORTSDB_API_KEY
@@ -58,7 +58,7 @@ services:
       - key: FRONTEND_ORIGIN
         value: "https://futbolxabar.uz"
       - key: DAILY_DIGEST
-        value: "false"
+        value: "true"
       - key: DAILY_DIGEST_TIME
         value: "09:00"
       - key: DAILY_DIGEST_LIMIT
