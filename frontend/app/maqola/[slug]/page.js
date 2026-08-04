@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdPlaceholder from "../../../components/AdPlaceholder";
+import CopyLinkButton from "../../../components/CopyLinkButton";
 import { apiGet } from "../../../lib/api";
 import { formatUzDate, formatUzDateTime } from "../../../lib/date";
 import { truncateSeoText } from "../../../lib/seo";
@@ -70,7 +71,7 @@ function structuredData(article) {
             : `${url}/opengraph-image`,
         ],
         datePublished: article.published_at || article.created_at,
-        dateModified: article.published_at || article.created_at,
+        dateModified: article.updated_at || article.published_at || article.created_at,
         inLanguage: "uz",
         articleSection: article.category?.name,
         keywords: (article.tags || []).join(", "),
@@ -125,10 +126,12 @@ export default async function ArticlePage({ params }) {
     Math.ceil((article.content || "").split(/\s+/).length / 200),
   );
   const date = formatUzDateTime(article.published_at);
+  const lastUpdated = article.updated_at || article.published_at || article.created_at;
   const sourceDate = article.source_published_at
     ? formatUzDate(article.source_published_at, { year: true })
     : null;
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(`${SITE_URL}/maqola/${article.slug}`)}&text=${encodeURIComponent(article.title)}`;
+  const related = (await apiGet(`/api/news/${slug}/related`, { limit: 4 })) || [];
 
   return (
     <article className="mx-auto max-w-2xl py-4 sm:py-8">
@@ -184,14 +187,13 @@ export default async function ArticlePage({ params }) {
           Taxminan {readingMinutes} daqiqa
         </div>
         <div>
-          <span className="block font-bold text-slate-200">Tayyorlash usuli</span>
-          AI yordamida o‘zbekchalashtirilgan
+          <span className="block font-bold text-slate-200">Muallif</span>
+          Futbol Xabar tahririyati
         </div>
-        {sourceDate && (
-          <p className="sm:col-span-3 border-t border-slate-900 pt-2 text-[11px] text-slate-500">
-            Asl xabar e’lon qilingan sana: {sourceDate}
-          </p>
-        )}
+        <p className="sm:col-span-3 border-t border-slate-900 pt-2 text-[11px] text-slate-500">
+          Oxirgi yangilangan: {formatUzDateTime(lastUpdated)}
+          {sourceDate && ` · Asl xabar e’lon qilingan sana: ${sourceDate}`}
+        </p>
       </div>
 
       {/* Summary Highlight (Blockquote) */}
@@ -249,18 +251,59 @@ export default async function ArticlePage({ params }) {
           <span>Asl manba ({article.source_name})</span>
         </a>
         
-        <a
-          href={shareUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 px-6 py-3 text-xs sm:text-sm font-bold text-white transition-all duration-200 shadow-md shadow-sky-500/10 active:scale-[0.98]"
-        >
-          <svg className="h-4.5 w-4.5 fill-white" viewBox="0 0 24 24">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.24-5.54 3.65-.52.36-.99.53-1.4.52-.46-.01-1.34-.26-1.99-.47-.8-.26-1.43-.4-1.38-.85.03-.23.35-.47.96-.71 3.76-1.64 6.27-2.72 7.53-3.25 3.58-1.51 4.32-1.77 4.81-1.78.11 0 .35.03.5.16.13.12.17.29.18.41-.01.08-.01.22-.02.26z"/>
-          </svg>
-          Telegramda ulashish
-        </a>
+        <div className="flex flex-wrap items-center gap-2">
+          <CopyLinkButton url={`${SITE_URL}/maqola/${article.slug}`} />
+          <a
+            href={shareUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 px-6 py-3 text-xs sm:text-sm font-bold text-white transition-all duration-200 shadow-md shadow-sky-500/10 active:scale-[0.98]"
+          >
+            <svg className="h-4.5 w-4.5 fill-white" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.24-5.54 3.65-.52.36-.99.53-1.4.52-.46-.01-1.34-.26-1.99-.47-.8-.26-1.43-.4-1.38-.85.03-.23.35-.47.96-.71 3.76-1.64 6.27-2.72 7.53-3.25 3.58-1.51 4.32-1.77 4.81-1.78.11 0 .35.03.5.16.13.12.17.29.18.41-.01.08-.01.22-.02.26z"/>
+            </svg>
+            Telegramda ulashish
+          </a>
+        </div>
       </div>
+
+      {/* O'xshash xabarlar */}
+      {related.length > 0 && (
+        <section className="mt-10">
+          <div className="mb-4 flex items-center justify-between border-b border-slate-900 pb-3">
+            <h2 className="text-sm font-extrabold uppercase tracking-widest text-slate-200">
+              📰 O'xshash xabarlar
+            </h2>
+            {article.category && (
+              <Link
+                href={`/kategoriya/${article.category.slug}`}
+                className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+              >
+                Barchasi →
+              </Link>
+            )}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {related.map((item) => (
+              <Link
+                key={item.id}
+                href={`/maqola/${item.slug}`}
+                className="group rounded-2xl border border-slate-900 bg-slate-950/40 p-4 hover:border-emerald-500/30 transition-all duration-200"
+              >
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                  {item.category?.name || "AI"}
+                </span>
+                <h3 className="text-sm font-bold leading-snug text-slate-100 line-clamp-2 group-hover:text-emerald-400 transition-colors">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-xs text-slate-500">
+                  {formatUzDate(item.published_at)}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </article>
   );
 }

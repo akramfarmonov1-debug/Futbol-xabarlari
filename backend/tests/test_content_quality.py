@@ -61,9 +61,11 @@ class ContentQualityTests(unittest.TestCase):
         )
 
     def test_text_cleanup(self):
+        # "Liverpoool" kodlash xatosi tuzatiladi, "Wrexham" esa yagona
+        # o'zbekcha shakl (Vrekshem) ga keltiriladi.
         self.assertEqual(
             normalize_text("Wrexham Liverpooolga qarshi"),
-            "Wrexham Liverpulga qarshi",
+            "Vrekshem Liverpulga qarshi",
         )
         self.assertEqual(normalize_text("ZinÃ©din Â«RealÂ»"), "Zinédin «Real»")
 
@@ -295,6 +297,46 @@ class ContentQualityTests(unittest.TestCase):
             "Wrexham Liverpulga qarshi",
         )
         session.close()
+
+    def test_glossary_unifies_team_and_word_spellings(self):
+        self.assertEqual(
+            normalize_text("Chelsea va Rangers o'yini bo'yicha muxokama"),
+            "Chelsi va Reynjers o'yini bo'yicha muhokama",
+        )
+        self.assertEqual(
+            normalize_text("Wrexham Liverpulga qarshi"),
+            "Vrekshem Liverpulga qarshi",
+        )
+        self.assertEqual(
+            normalize_text("Barcelona Atletico Madridga qarshi"),
+            "Barselona Atletiko Madridga qarshi",
+        )
+
+    def test_overlong_title_rejected(self):
+        analysis = {
+            "sarlavha": "A" * 111,
+            "xulosa": "Qisqa xulosa emas, yetarlicha uzun matn." * 3,
+            "maqola": "To'liq maqola matni. " * 30,
+        }
+        publishable, reasons = analysis_is_publishable(analysis)
+        self.assertFalse(publishable)
+        self.assertTrue(any("sarlavha uzunligi" in reason for reason in reasons))
+
+    def test_excessive_repetition_rejected(self):
+        repeated = "anomaliya " * 10
+        content = (
+            "Mavsum davomida " + repeated
+            + "qayd etildi, bu holat kuzatuvchilarni xavotirga soldi. " * 6
+        )
+        analysis = {
+            "sarlavha": "Barselona mavsum oldidan tarkibini yangiladi",
+            "xulosa": "Barselona mavsumoldi tayyorgarlikni boshladi. Klub bir necha "
+            "o'zgarish kiritdi va muxlislar natijani kutmoqda.",
+            "maqola": content,
+        }
+        publishable, reasons = analysis_is_publishable(analysis)
+        self.assertFalse(publishable)
+        self.assertTrue(any("takrorlangan" in reason for reason in reasons))
 
 
 if __name__ == "__main__":

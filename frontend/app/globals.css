@@ -5,6 +5,13 @@
   --color-emerald-glow: #10b981;
 }
 
+/* Sahifa gorizontal kengaymasligi uchun himoya: scroll konteyner
+   yaratmaydi (clip), shuning uchun sticky header buzilmaydi. */
+html,
+body {
+  overflow-x: clip;
+}
+
 body {
   background-color: var(--color-pitch-dark);
   background-image: 

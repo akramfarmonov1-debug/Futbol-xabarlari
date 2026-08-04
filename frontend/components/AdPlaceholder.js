@@ -1,19 +1,44 @@
 "use client";
 
+// Reklama provayderi (Google AdSense) faqat NEXT_PUBLIC_ADSENSE_CLIENT_ID
+// sozlangan bo'lsa ishlaydi. Provayder ulangan bo'lmasa, placeholder
+// foydalanuvchiga umuman ko'rinmaydi (sahifa toza bo'ladi).
+const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID || "";
+const ADSENSE_SLOT = process.env.NEXT_PUBLIC_ADSENSE_SLOT_ID || "";
+
+// O'lchamlar: mobil va desktop uchun alohida, layout siljishini (CLS)
+// oldini olish uchun joy oldindan band qilinadi.
+const SIZES = {
+  sidebar: { minHeight: 250, className: "hidden sm:block" },
+  banner: { minHeight: 50, className: "" },
+};
+
 export default function AdPlaceholder({ type = "sidebar" }) {
-  // Bosh sahifa yon paneli uchun kvadrat/minor banner, maqola osti uchun gorizontal banner
-  const dimensions = type === "sidebar" ? "h-60" : "h-24 sm:h-28";
-  const label = type === "sidebar" ? "300x250 Reklama" : "728x90 Reklama";
+  if (!ADSENSE_CLIENT) return null;
+
+  const size = SIZES[type] || SIZES.sidebar;
 
   return (
     <div className="w-full">
+      {/* Joy oldindan band qilinadi — reklama yuklanganda siljish bo'lmaydi. */}
       <div
-        className={`flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-900/40 p-4 text-center transition-colors hover:border-green-500/30 ${dimensions}`}
+        className="flex min-h-full w-full items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-slate-900/40"
+        style={{ minHeight: size.minHeight }}
       >
-        <span className="text-xs uppercase tracking-widest text-slate-600">Reklama</span>
-        <span className="mt-1 text-xs text-slate-500">{label}</span>
-        <span className="mt-2 text-[10px] text-slate-600">reklama@futbolxabar.uz</span>
+        <ins
+          className="adsbygoogle block"
+          style={{ display: "block" }}
+          data-ad-client={ADSENSE_CLIENT}
+          data-ad-slot={ADSENSE_SLOT || undefined}
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        />
       </div>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: "(adsbygoogle = window.adsbygoogle || []).push({});",
+        }}
+      />
     </div>
   );
 }

@@ -39,6 +39,13 @@ services:
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
       MEDIA_DIR: /app/media
       BACKEND_PUBLIC_URL: ${BACKEND_PUBLIC_URL:-http://localhost:8000}
+      # Kunlik dayjest: har kuni DAILY_DIGEST_TIME da kanalga xulosa posti
+      DAILY_DIGEST: ${DAILY_DIGEST:-false}
+      DAILY_DIGEST_TIME: ${DAILY_DIGEST_TIME:-09:00}
+      DAILY_DIGEST_LIMIT: ${DAILY_DIGEST_LIMIT:-5}
+      DAILY_DIGEST_MIN_IMPORTANCE: ${DAILY_DIGEST_MIN_IMPORTANCE:-3}
+      DAILY_DIGEST_INTERVAL: ${DAILY_DIGEST_INTERVAL:-600}
+      DAILY_DIGEST_WINDOW_MINUTES: ${DAILY_DIGEST_WINDOW_MINUTES:-30}
     volumes:
       - media:/app/media
     ports:

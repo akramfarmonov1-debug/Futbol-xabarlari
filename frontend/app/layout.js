@@ -154,6 +154,10 @@ export default function RootLayout({ children }) {
                 <a href="/maxfiylik" className="text-slate-400 hover:text-emerald-400 transition-colors">
                   Maxfiylik kelishuvi
                 </a>
+                <span className="text-slate-800 hidden sm:inline">|</span>
+                <a href="/tahrir-siyosati" className="text-slate-400 hover:text-emerald-400 transition-colors">
+                  Tahrir siyosati
+                </a>
               </div>
               <p className="mb-4 text-xs max-w-md mx-auto leading-relaxed">
                 Loyihadagi barcha xabarlar AI (Sun&apos;iy intellekt) yordamida o&apos;zbek tiliga tushunarli qilib tarjima qilingan va tayyorlangan.

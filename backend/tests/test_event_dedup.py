@@ -100,6 +100,100 @@ class EventDedupTests(unittest.TestCase):
         self.assertEqual(session.query(ArticleSource).count(), 1)
         session.close()
 
+    def test_event_key_matching_detects_same_event(self):
+        match = compare_events(
+            "Chelsi yangi yulduzni sotib oldi",
+            "Chelsea himoyachi bilan shartnoma imzoladi.",
+            "Chelsi tarkibni kuchaytirdi",
+            "Chelsea yangi himoyachini safiga qo'shib oldi.",
+            first_event_key="transfer:valentin-barco:chelsea",
+            second_event_key="transfer:barco:chelsea",
+            first_entities=["Valentin Barco", "Chelsea"],
+            second_entities=["Chelsea", "Valentin Barco"],
+        )
+        self.assertTrue(match.is_duplicate, match)
+
+    def test_different_event_type_with_same_entities_stays_separate(self):
+        match = compare_events(
+            "Chelsi mavsumoldi tayyorgarlikni boshladi",
+            "Chelsea yangi mavsumga tayyorgarlik o'yinini o'tkazdi.",
+            "Chelsi Barkoni sotib oldi",
+            "Chelsea Barco bilan shartnoma imzoladi.",
+            first_event_key="match:chelsea:preseason",
+            second_event_key="transfer:barco:chelsea",
+            first_entities=["Chelsea"],
+            second_entities=["Chelsea", "Barco"],
+        )
+        self.assertFalse(match.is_duplicate, match)
+
+    def test_followup_with_new_score_is_not_blocked(self):
+        match = compare_events(
+            "Lids Liverpulni yirik hisobda mag'lub etdi",
+            "Leeds 4:2 hisobida g'alaba qozondi.",
+            "Liverpul va Lids o'yin oldidan tarkiblar e'lon qilindi",
+            "Liverpool va Leeds mavsumoldi o'yiniga tayyor.",
+            first_event_key="match:leeds:liverpool",
+            second_event_key="match:liverpool:leeds",
+            first_entities=["Leeds", "Liverpool"],
+            second_entities=["Liverpool", "Leeds"],
+        )
+        self.assertTrue(match.is_followup, match)
+        self.assertFalse(match.is_duplicate, match)
+
+    def test_fifa_investment_repeat_blocked_via_event_key(self):
+        match = compare_events(
+            "FIFA futbol investitsiyalari bo'yicha yangi qaror",
+            "FIFA butun dunyo futbolini rivojlantirish uchun sarmoya kiritadi.",
+            "FIFA investitsiya dasturini e'lon qildi",
+            "FIFA global futbolni qo'llab-quvvatlash uchun investitsiya ajratdi.",
+            first_event_key="funding:fifa:football",
+            second_event_key="funding:fifa",
+            first_entities=["FIFA"],
+            second_entities=["FIFA"],
+        )
+        self.assertTrue(match.is_duplicate, match)
+
+    def test_db_event_key_match_via_quality(self):
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+        session = sessionmaker(bind=engine)()
+        article = Article(
+            title="Valentin Barco Angliya Premer-ligasida",
+            slug="barco-chelsea",
+            summary="Chelsea Valentin Barconi Strasbourgdan o'z safiga qo'shib oldi.",
+            content="Chelsea futbolchi bilan yetti yillik shartnoma imzoladi.",
+            original_title="Chelsea sign Valentin Barco from Strasbourg",
+            original_url="https://source-one.example/barco",
+            source_name="Source One",
+            source_published_at=datetime.utcnow(),
+            status="pending",
+        )
+        session.add(article)
+        session.flush()
+        from app.models import ArticleQuality
+
+        session.add(
+            ArticleQuality(
+                article_id=article.id,
+                event_key="transfer:valentin-barco:chelsea",
+                entities=["Valentin Barco", "Chelsea", "Strasbourg"],
+                decision="ready",
+            )
+        )
+        session.commit()
+
+        duplicate, match = find_duplicate_article(
+            session,
+            "Chelsi yangi himoyachini sotib oldi",
+            "Chelsea Barconi Strasbourgdan o'z safiga qo'shib oldi.",
+            datetime.utcnow(),
+            event_key="transfer:barco:chelsea",
+            entities=["Barco", "Chelsea", "Strasbourg"],
+        )
+        self.assertEqual(duplicate.id, article.id)
+        self.assertTrue(match.is_duplicate, match)
+        session.close()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -83,6 +83,17 @@ MIN_FACT_CONFIDENCE = int(os.getenv("MIN_FACT_CONFIDENCE", "80"))
 AUTO_TELEGRAM = _bool("AUTO_TELEGRAM", "false")
 AUTO_TELEGRAM_MIN_IMPORTANCE = int(os.getenv("AUTO_TELEGRAM_MIN_IMPORTANCE", "4"))
 
+# Kunlik dayjest: har kuni DAILY_DIGEST_TIME (Toshkent vaqti) da kanalga
+# bugungi muhim yangiliklarni bitta xulosa posti sifatida yuborish.
+DAILY_DIGEST = _bool("DAILY_DIGEST", "false")
+DAILY_DIGEST_TIME = os.getenv("DAILY_DIGEST_TIME", "09:00")
+DAILY_DIGEST_LIMIT = int(os.getenv("DAILY_DIGEST_LIMIT", "5"))
+DAILY_DIGEST_MIN_IMPORTANCE = int(os.getenv("DAILY_DIGEST_MIN_IMPORTANCE", "3"))
+# Loop qanchalik tez-tek tekshirishi (sekund) — oyna ichida bir marta yuboriladi.
+DAILY_DIGEST_INTERVAL = int(os.getenv("DAILY_DIGEST_INTERVAL", "600"))
+# Maqsadli vaqt atrofidagi oyna (daqiqa) — aniq daqiqani o'tkazib yubormaslik uchun.
+DAILY_DIGEST_WINDOW_MINUTES = int(os.getenv("DAILY_DIGEST_WINDOW_MINUTES", "30"))
+
 # Rasm topilmaganda Gemini bilan generatsiya qilish (pullik — standart o'chiq)
 IMAGE_GENERATION = _bool("IMAGE_GENERATION", "false")
 GEMINI_IMAGE_MODEL = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")

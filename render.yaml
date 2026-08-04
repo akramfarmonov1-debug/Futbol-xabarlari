@@ -57,6 +57,14 @@ services:
         sync: false
       - key: FRONTEND_ORIGIN
         value: "https://futbolxabar.uz"
+      - key: DAILY_DIGEST
+        value: "false"
+      - key: DAILY_DIGEST_TIME
+        value: "09:00"
+      - key: DAILY_DIGEST_LIMIT
+        value: "5"
+      - key: DAILY_DIGEST_MIN_IMPORTANCE
+        value: "3"
 
 databases:
   - name: futbol-xabar-db

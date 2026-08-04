@@ -1,6 +1,7 @@
 """Futbol kontenti va o'zbekcha matn sifati uchun markaziy nazorat."""
 
 import re
+from collections import Counter
 from urllib.parse import urlparse
 
 from sqlalchemy import and_, or_, func
@@ -17,6 +18,7 @@ from ..config import (
     MIN_FACT_CONFIDENCE,
     MIN_FOOTBALL_CONFIDENCE,
 )
+from .names_glossary import canonicalize_names
 
 
 FOOTBALL_TERMS = re.compile(
@@ -84,10 +86,11 @@ TEXT_REPLACEMENTS = (
 
 
 def normalize_text(value: str | None) -> str:
-    """Ko'p uchraydigan kodlash va imlo xatolarini tuzatadi."""
+    """Ko'p uchraydigan kodlash, imlo va nom (transliteratsiya) xatolarini tuzatadi."""
     text = str(value or "")
     for broken, fixed in TEXT_REPLACEMENTS:
         text = text.replace(broken, fixed)
+    text = canonicalize_names(text)
     text = re.sub(r"[ \t]{2,}", " ", text)
     return text.strip()
 
@@ -159,6 +162,38 @@ def _evidence_text(value: str) -> str:
     return re.sub(r"[^a-z0-9а-яёўқғҳ]+", " ", value.lower()).strip()
 
 
+# O'zbekcha tahrir qoidalari — NEXT_TASKS #2 bo'yicha.
+# Sarlavha uchun qat'iy uzunlik chegarasi (maqsad: 70-90 belgi).
+MAX_TITLE_LENGTH = 110
+REPETITION_MIN = 6
+REPETITION_RATIO = 0.15
+
+# Takrorlanishi tabiiy bo'lgan nomlar va so'zlar — hisobga olinmaydi.
+_COMMON_NAMES = {
+    "chelsi", "liverpul", "barselona", "bavariya", "juventus", "yuventus",
+    "manchester", "futbolchi", "jamoasi", "jamoa", "klub", "murabbiy",
+    "o'yin", "o'yinga", "mavsum", "shartnoma", "natija",
+}
+
+
+def _repetition_issue(text: str) -> list[str]:
+    """Bitta so'z g'ayritabiiy ko'p takrorlangan bo'lsa sabablarni qaytaradi."""
+    words = [
+        word
+        for word in re.findall(r"[A-Za-zÀ-žʻʼ']{4,}", str(text or "").lower())
+        if word not in _COMMON_NAMES
+    ]
+    total = len(words)
+    if total < 40:
+        return []
+    counter = Counter(words)
+    return [
+        f"'{word}' haddan tashqari ko'p takrorlangan ({count} marta)"
+        for word, count in counter.most_common(6)
+        if count >= REPETITION_MIN and count / total >= REPETITION_RATIO
+    ]
+
+
 def analysis_is_publishable(
     analysis: dict,
     source_text: str = "",
@@ -170,14 +205,20 @@ def analysis_is_publishable(
     summary = normalize_text(analysis.get("xulosa"))
     content = normalize_text(analysis.get("maqola"))
 
-    if not 15 <= len(title) <= 180:
-        reasons.append("sarlavha uzunligi noto'g'ri")
+    if not 15 <= len(title) <= MAX_TITLE_LENGTH:
+        reasons.append(
+            f"sarlavha uzunligi noto'g'ri (15-{MAX_TITLE_LENGTH} belgi bo'lishi kerak)"
+        )
     if len(summary) < 80:
         reasons.append("xulosa juda qisqa")
     if len(content) < 250:
         reasons.append("maqola juda qisqa")
     if "\n" in title:
         reasons.append("sarlavhada yangi qator bor")
+
+    # O'zbekcha tahrir: g'ayritabiiy takrorlanishni aniqlash.
+    reasons.extend(_repetition_issue(content))
+    reasons.extend(_repetition_issue(summary))
 
     suspicious = re.compile(
         r"(?:men bu vazifani|i cannot|as an ai|```|<html|lorem ipsum)",

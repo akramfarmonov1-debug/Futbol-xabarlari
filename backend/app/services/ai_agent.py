@@ -41,7 +41,9 @@ SYSTEM_PROMPT = """**Rol:** Sen jahon futboli bo'yicha yetakchi o'zbek sport jur
 11. **Entitylar:** "entities" maydonida voqeaning asosiy futbolchi, klub, turnir yoki tashkilot nomlarini kanonik yozuvda ber.
 12. **Fakt dalili:** "facts" ichidagi har bir fakt uchun "evidence" maydoniga berilgan asl matndan aynan ko'chirilgan qisqa dalil yoz. Matnda yo'q dalil yaratma.
 13. **Confidence:** football_confidence, category_confidence va fact_confidence maydonlarini 0-100 oralig'ida konservativ bahola. Manba qisqa, noaniq yoki ziddiyatli bo'lsa ballni pasaytir.
-14. **Event key:** "event_key" maydonida voqea turini va asosiy entitylarni kichik harflarda qisqa yoz (masalan: "transfer:valentin-barco:chelsea")."""
+14. **Event key:** "event_key" maydonida voqea turini va asosiy entitylarni kichik harflarda qisqa yoz (masalan: "transfer:valentin-barco:chelsea").
+15. **Tabiiy o'zbek tili:** Matn tarjima emas, o'zbek sport jurnalisti yozgandek o'qilishi shart. "sarlavha" odatda 70-90 belgidan oshmasin. Clickbait va sun'iy iboralar ("ajoyib yangilik", "hayratlanarli natija", "kutilmagan burilish"), ortiqcha takror va bo'rttirish ishlatma. Bir so'zni ham jumla ichida g'ayritabiiy ko'p takrorlama. "seo_sarlavha" uchun 60-70 belgi atrofida bo'lsin.
+16. **Yagona nomlar:** Klub, futbolchi va turnir nomlarini o'zbek matbuotida qabul qilingan shaklda yoz (Chelsea → Chelsi, Wrexham → Vrekshem, Rangers → Reynjers, Liverpool → Liverpul, Bayern → Bavariya). Bir maqola ichida bitta nomni turli xil yozilishda ishlatma."""
 
 CATEGORY_SLUGS = [
     "transferlar", "premyer-liga", "la-liga", "seriya-a", "bundesliga",

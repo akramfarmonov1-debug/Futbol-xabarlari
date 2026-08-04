@@ -7,12 +7,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .config import FRONTEND_ORIGIN, MEDIA_DIR
-from .database import Base, SessionLocal, engine
+from .config import DAILY_DIGEST, FRONTEND_ORIGIN, MEDIA_DIR
+from .database import Base, SessionLocal, engine, ensure_schema
 from .routers import admin, categories, news, scores
 from .seed import seed_categories
 from .pipeline import run_pipeline
 from .bot.bot import main as run_bot
+from .services.daily_digest import run_digest_loop
 
 
 async def pipeline_loop_task():
@@ -40,9 +41,19 @@ async def bot_task():
         print(f"❌ Telegram Bot error: {e}")
 
 
+async def digest_task():
+    await asyncio.sleep(20)
+    try:
+        print("📋 Starting background Daily Digest loop...")
+        await run_digest_loop()
+    except Exception as e:
+        print(f"❌ Daily Digest loop error: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(engine)
+    ensure_schema()
     db = SessionLocal()
     try:
         seed_categories(db)
@@ -58,8 +69,14 @@ async def lifespan(app: FastAPI):
     if os.getenv("TELEGRAM_BOT_TOKEN"):
         bg_tasks.append(asyncio.create_task(bot_task()))
     else:
-        print("⚠️ TELEGRAM_BOT_TOKEN is not set. Bot background task will not start.")
-        
+        print("[INFO] TELEGRAM_BOT_TOKEN is not set. Bot background task will not start.")
+
+    # Start daily digest if enabled
+    if DAILY_DIGEST:
+        bg_tasks.append(asyncio.create_task(digest_task()))
+    else:
+        print("[INFO] DAILY_DIGEST is not enabled. Daily digest task will not start.")
+
     yield
     
     for task in bg_tasks:

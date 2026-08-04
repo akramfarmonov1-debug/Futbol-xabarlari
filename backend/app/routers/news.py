@@ -157,6 +157,43 @@ def get_rss_feed(db: Session = Depends(get_db)):
     return Response(content=rss_xml, media_type="application/xml")
 
 
+@router.get("/{slug}/related", response_model=list[ArticleOut])
+def related_news(
+    slug: str,
+    db: Session = Depends(get_db),
+    limit: int = Query(default=4, le=10),
+):
+    """O'xshash xabarlar — bir kategoriya yoki umumiy teglar bo'yicha."""
+    article = published(db).filter(Article.slug == slug).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Maqola topilmadi")
+
+    tags = set(article.tags or [])
+    category_id = article.category_id
+
+    candidates = (
+        published(db)
+        .filter(Article.id != article.id)
+        .order_by(Article.published_at.desc())
+        .limit(150)
+        .all()
+    )
+
+    def _score(candidate: Article) -> int:
+        score = 0
+        if category_id and candidate.category_id == category_id:
+            score += 2
+        score += len(tags & set(candidate.tags or [])) * 3
+        return score
+
+    scored = [(candidate, _score(candidate)) for candidate in candidates]
+    scored.sort(
+        key=lambda pair: (pair[1], pair[0].published_at or datetime.min),
+        reverse=True,
+    )
+    return [candidate for candidate, score in scored if score > 0][:limit]
+
+
 @router.get("/{slug}", response_model=ArticleOut)
 def article_detail(slug: str, db: Session = Depends(get_db)):
     article = published(db).filter(Article.slug == slug).first()

@@ -56,6 +56,13 @@ class Article(Base):
     source_published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # "Oxirgi yangilangan" — admin tahriri/tasdiqlashda avtomatik yangilanadi.
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=True,
+    )
 
 
 class ArticleSource(Base):
@@ -123,3 +130,14 @@ class IngestionDecision(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+
+
+class DailyDigestLog(Base):
+    """Kunlik dayjest kanalga qachon yuborilgani — bir kunda bir marta."""
+
+    __tablename__ = "daily_digest_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    digest_date: Mapped[str] = mapped_column(String(10), unique=True, index=True)
+    articles_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

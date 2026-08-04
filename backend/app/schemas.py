@@ -68,6 +68,7 @@ class ArticleOut(BaseModel):
     source_published_at: datetime | None
     published_at: datetime | None
     created_at: datetime
+    updated_at: datetime | None = None
 
 
 class SitemapArticleOut(BaseModel):

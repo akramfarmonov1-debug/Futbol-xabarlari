@@ -10,6 +10,7 @@ from ..database import engine
 
 BOT_LOCK_ID = 7_301_001
 PIPELINE_LOCK_ID = 7_301_002
+DIGEST_LOCK_ID = 7_301_003
 
 
 @dataclass

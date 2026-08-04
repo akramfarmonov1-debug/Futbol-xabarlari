@@ -20,7 +20,7 @@ from .config import (
     IMAGE_GENERATION,
     TELEGRAM_BOT_TOKEN,
 )
-from .database import Base, SessionLocal, engine
+from .database import Base, SessionLocal, engine, ensure_schema
 from .models import Article, ArticleQuality, Category
 from .seed import seed_categories
 from .services.ai_agent import analyze_news
@@ -65,6 +65,7 @@ def run_pipeline(per_feed: int = 5) -> int:
 
 def _run_pipeline(per_feed: int = 5) -> int:
     Base.metadata.create_all(engine)
+    ensure_schema()
     db = SessionLocal()
     saved = 0
     try:
@@ -188,13 +189,15 @@ def _run_pipeline(per_feed: int = 5) -> int:
                     + ", ".join(quality_reasons)
                 )
 
-            # Tarjima qilingan sarlavha va entitylar raw RSS bosqichida
-            # ko'rinmagan dublikat voqeani aniqlashga yordam beradi.
+            # Tarjima qilingan sarlavha, event_key va entitylar raw RSS
+            # bosqichida ko'rinmagan dublikat voqeani aniqlashga yordam beradi.
             duplicate, duplicate_match = find_duplicate_article(
                 db,
                 f"{news['title']} {analysis['sarlavha']}",
                 f"{news['content']} {analysis['xulosa']}",
                 news["published_at"],
+                event_key=analysis.get("event_key", ""),
+                entities=analysis.get("entities", []),
             )
             if duplicate:
                 attach_article_source(
@@ -219,6 +222,23 @@ def _run_pipeline(per_feed: int = 5) -> int:
                     f"(score={duplicate_match.score})"
                 )
                 continue
+            if duplicate_match and duplicate_match.is_followup:
+                # Ayni voqeaning yangi aniq fakt bilan davomiy yangilanishi
+                # (masalan, yangi hisob) — bloklanmaydi, yangi maqola sifatida
+                # davom etiladi va audit logga yoziladi.
+                record_ingestion_decision(
+                    db,
+                    original_url=news["url"],
+                    original_title=news["title"],
+                    source_name=news["source"],
+                    decision="update_followup",
+                    reasons=list(duplicate_match.reasons),
+                    matched_article_id=duplicate.id,
+                )
+                print(
+                    f"   ↪ Davomiy yangilanish (yangi fakt): {duplicate.slug} "
+                    f"(score={duplicate_match.score})"
+                )
 
             slug = slugify(analysis["sarlavha"])
             if db.query(Article).filter(Article.slug == slug).first():
