@@ -11,7 +11,8 @@ const nextConfig = {
       { protocol: "https", hostname: "*.espncdn.com" },
       { protocol: "https", hostname: "media.sports.uz" },
       { protocol: "https", hostname: "cdn.pfl.uz" },
-      { protocol: "https", hostname: "*.thesportsdb.com" },
+      { protocol: "https", hostname: "crests.football-data.org" },
+      { protocol: "https", hostname: "upload.wikimedia.org" },
       {
         protocol: "https",
         hostname: "futbol-xabar-backend.onrender.com",
