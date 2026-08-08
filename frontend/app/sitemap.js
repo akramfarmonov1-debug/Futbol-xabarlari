@@ -1,13 +1,23 @@
 import { API_URL } from "../lib/api";
 import { SITE_URL } from "../lib/site";
 
-const FETCH_ATTEMPTS = 3;
+// Sitemap ma'lumotlari build vaqtida tashqi backendga bog'lanib qolmasin.
+// Route so'rov paytida generatsiya qilinadi va backend vaqtincha uxlab qolsa
+// qisqa muddat ichida bo'sh sitemap bilan xavfsiz davom etadi.
+export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
+const FETCH_ATTEMPTS = 2;
+const FETCH_TIMEOUT_MS = 5_000;
 const LEGACY_PAGE_SIZE = 400;
 
 async function fetchJson(url) {
   for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
     try {
-      const res = await fetch(url, { next: { revalidate: 3600 } });
+      const res = await fetch(url, {
+        next: { revalidate: 3600 },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
       if (res.ok) return await res.json();
       console.error(`Sitemap fetch error: HTTP ${res.status} (${url})`);
     } catch (error) {

@@ -2,6 +2,14 @@ import { API_URL } from "../../lib/api";
 import { SITE_NAME, SITE_URL } from "../../lib/site";
 
 const NEWS_WINDOW_MS = 48 * 60 * 60 * 1000;
+const FETCH_TIMEOUT_MS = 5_000;
+
+function fetchApi(url) {
+  return fetch(url, {
+    next: { revalidate: 900 },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+}
 
 function escapeXml(value = "") {
   return String(value)
@@ -16,13 +24,9 @@ export async function GET() {
   let articles = [];
 
   try {
-    let response = await fetch(`${API_URL}/api/news/sitemap?hours=48`, {
-      next: { revalidate: 900 },
-    });
+    let response = await fetchApi(`${API_URL}/api/news/sitemap?hours=48`);
     if (!response.ok) {
-      response = await fetch(`${API_URL}/api/news?limit=100`, {
-        next: { revalidate: 900 },
-      });
+      response = await fetchApi(`${API_URL}/api/news?limit=100`);
     }
     if (response.ok) articles = await response.json();
   } catch (error) {
