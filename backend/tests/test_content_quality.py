@@ -1,3 +1,4 @@
+import re
 import unittest
 
 from sqlalchemy import create_engine
@@ -13,6 +14,7 @@ from app.services.content_quality import (
     is_football_content,
     normalize_text,
 )
+from app.services.collector import FUTBOL_KEYWORDS
 
 
 class ContentQualityTests(unittest.TestCase):
@@ -41,6 +43,43 @@ class ContentQualityTests(unittest.TestCase):
                 "Sky Sports Football",
             )
         )
+
+    def test_sky_accepts_football_video_without_football_url_path(self):
+        self.assertTrue(
+            is_football_content(
+                "St Mirren 1-0 St Johnstone",
+                "Scottish Premiership highlights",
+                "https://www.skysports.com/watch/video/13571233/st-mirren-1-0-st-johnstone-scottish-premiership-highlights",
+                "Sky Sports Football",
+            )
+        )
+
+    def test_bbc_accepts_football_video_by_team_names(self):
+        self.assertTrue(
+            is_football_content(
+                "Partick Thistle beat Livingston in Scottish Championship",
+                "Match highlights",
+                "https://www.bbc.co.uk/sport/videos/c98vppyny3go",
+                "BBC Sport Football",
+            )
+        )
+
+    def test_sports_uz_accepts_real_and_al_ahli_in_cyrillic(self):
+        titles = (
+            "«Реал» Эндрикни қаерга юбориши аниқлади",
+            "«Ал-Аҳли» Кессини қайтариб олиши мумкин",
+        )
+        for title in titles:
+            with self.subTest(title=title):
+                self.assertRegex(title, re.compile(FUTBOL_KEYWORDS, re.IGNORECASE))
+                self.assertTrue(
+                    is_football_content(
+                        title,
+                        "",
+                        "https://sports.uz/news/view/example",
+                        "Sports.uz",
+                    )
+                )
 
     def test_known_football_sources(self):
         self.assertTrue(
@@ -88,6 +127,21 @@ class ContentQualityTests(unittest.TestCase):
 
         unnatural = dict(valid, maqola=valid["maqola"] + " Bu juda katta HYPE.")
         self.assertFalse(analysis_is_publishable(unnatural)[0])
+
+    def test_known_football_acronyms_are_allowed(self):
+        valid = {
+            "sarlavha": "AQSH va NWSL yangi futbol mavsumiga tayyorlanmoqda",
+            "xulosa": "ESPN xabariga ko'ra, AQSH futbol tizimidagi NWSL va LAFC "
+            "yangi mavsum taqvimini e'lon qildi. YECHL uchrashuvlari ham kuzatiladi.",
+            "maqola": "AQSH futbol tizimidagi jamoalar yangi mavsumga tayyorlanmoqda. "
+            "ESPN xabarida NWSL musobaqasi hamda LAFC rejalari haqida ma'lumot "
+            "berildi. YECHL uchrashuvlari bilan bog'liq taqvim ham muxlislar uchun "
+            "muhim ekani qayd etildi.\n\nJamoalar mashg'ulotlarni boshlagan va yangi "
+            "mavsum oldidan tarkiblarini baholamoqda. Murabbiylar o'yinchilarning "
+            "holatini kuzatadi, rasmiy uchrashuvlar jadvali esa alohida e'lon qilinadi.",
+        }
+        publishable, reasons = analysis_is_publishable(valid)
+        self.assertTrue(publishable, reasons)
 
     def test_structured_quality_gate_requires_supported_facts(self):
         source = (
@@ -280,6 +334,13 @@ class ContentQualityTests(unittest.TestCase):
                     source_name="The Guardian Football",
                     status="published",
                 ),
+                Article(
+                    title="St Mirren 1-0 St Johnstone",
+                    slug="st-mirren-video",
+                    original_url="https://www.skysports.com/watch/video/13571233/st-mirren-1-0-st-johnstone",
+                    source_name="Sky Sports Football",
+                    status="published",
+                ),
             ]
         )
         session.commit()
@@ -295,6 +356,10 @@ class ContentQualityTests(unittest.TestCase):
         self.assertEqual(
             session.query(Article).filter_by(slug="wrexham").one().title,
             "Wrexham Liverpulga qarshi",
+        )
+        self.assertEqual(
+            session.query(Article).filter_by(slug="st-mirren-video").one().status,
+            "published",
         )
         session.close()
 

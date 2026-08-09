@@ -65,9 +65,3 @@ services:
         value: "5"
       - key: DAILY_DIGEST_MIN_IMPORTANCE
         value: "3"
-
-# Eski Render DB hozircha saqlanadi; backend undan foydalanmaydi. Ma'lumotlarni
-# keyin tiklash kerak bo'lsa, resursni alohida migratsiya qilish mumkin.
-databases:
-  - name: futbol-xabar-db
-    plan: free
