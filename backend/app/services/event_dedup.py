@@ -281,10 +281,6 @@ def find_duplicate_article(
             db.query(ArticleQuality)
             .filter(
                 ArticleQuality.article_id.in_([a.id for a in candidates]),
-                or_(
-                    ArticleQuality.event_key != "",
-                    ArticleQuality.entities != [],
-                ),
             )
             .all()
         )

@@ -31,6 +31,7 @@ FUTBOL_KEYWORDS = (
     r"|барселона|barselona|реал мадрид|real madrid|манчестер|manchester"
     r"|ливерпул|liverpul|арсенал|arsenal|челси|chelsi|ювентус|yuventus"
     r"|[«\"“„]милан|[«\"“„]milan|байерн|bayern|псж|psj"
+    r"|\bреал\b|ал[-\s–—]?аҳли"
 )
 
 FEEDS = [

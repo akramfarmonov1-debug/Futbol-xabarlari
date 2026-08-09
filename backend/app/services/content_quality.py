@@ -4,7 +4,7 @@ import re
 from collections import Counter
 from urllib.parse import urlparse
 
-from sqlalchemy import and_, or_, func
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from ..models import Article
@@ -28,7 +28,8 @@ FOOTBALL_TERMS = re.compile(
     r"jahon chempionati|terma jamoa|paxtakor|nasaf|navbahor|bunyodkor|"
     r"barselona|barcelona|real madrid|manchester|liverpool|liverpul|arsenal|"
     r"chelsea|chelsi|juventus|yuventus|bayern|psg|tottenham|hearts|wrexham|"
-    r"milan|inter|roma|napoli|atletico|dortmund|"
+    r"milan|inter|roma|napoli|atletico|dortmund|st mirren|st johnstone|"
+    r"partick thistle|livingston|al[-\s]?ahli|ал[-\s–—]?аҳли|"
     r"футбол|суперлига|пфл|чемпионлар лигаси|уефа|фифа|трансфер|"
     r"терма жамоа|ҳужумчи|ҳимоячи|дарвозабон|мураббий|"
     r"пахтакор|бунёдкор|насаф|навбаҳор|барселона|барса|реал|"
@@ -56,6 +57,8 @@ NON_FOOTBALL_URL_PARTS = (
     "/basketball/",
     "/nba/",
     "/hockey/",
+    "/racing/",
+    "/netball/",
 )
 
 TEXT_REPLACEMENTS = (
@@ -141,9 +144,16 @@ def is_football_content(
     url_lower = url.lower()
     text = f"{title} {summary}"
 
-    # Aralash Sky RSS tasmasida sport turi URL yo'lida aniq ko'rsatiladi.
+    # Sky RSS tasmasida oddiy xabarlar sport turini URL yo'lida ko'rsatadi,
+    # ammo futbol videolari ham /watch/video/... ko'rinishida kelishi mumkin.
     if "sky sports" in source_lower:
-        return "/football/" in url_lower
+        if "/football/" in url_lower:
+            return True
+        if NON_FOOTBALL_TERMS.search(text):
+            return False
+        if any(part in url_lower for part in NON_FOOTBALL_URL_PARTS):
+            return False
+        return bool(FOOTBALL_TERMS.search(text))
 
     # Quyidagi maxsus tasmalar URL darajasida futbolga tegishli.
     if "guardian" in source_lower and "/football/" in url_lower:
@@ -228,10 +238,15 @@ def analysis_is_publishable(
         reasons.append("modelning texnik yoki rad javobi aniqlandi")
 
     allowed_acronyms = {
+        "AQSH",
+        "ESPN",
         "FIFA",
+        "LAFC",
+        "NWSL",
         "UEFA",
         "USMNT",
         "VAR",
+        "YECHL",
         "MLS",
         "PFL",
         "APL",
@@ -406,15 +421,11 @@ def cleanup_existing_articles(db: Session) -> tuple[int, int]:
         Article.original_url.contains(part)
         for part in NON_FOOTBALL_URL_PARTS
     ]
-    sky_non_football = and_(
-        Article.source_name.contains("Sky Sports"),
-        ~Article.original_url.contains("/football/"),
-    )
     rejected = (
         db.query(Article)
         .filter(
             Article.status == "published",
-            or_(sky_non_football, *bad_url_filters),
+            or_(*bad_url_filters),
         )
         .update(
             {Article.status: "rejected"},

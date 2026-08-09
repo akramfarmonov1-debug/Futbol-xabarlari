@@ -1,0 +1,41 @@
+name: Keep Render backend awake
+
+on:
+  schedule:
+    # Render Free 15 daqiqa traffiksiz qolsa uxlaydi. 10 daqiqalik ping
+    # background pipeline va Telegram bot jarayonlarini faol saqlaydi.
+    - cron: "7,17,27,37,47,57 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-render-backend-awake
+  cancel-in-progress: true
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Wake backend and wait until it is ready
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          endpoint="https://futbol-xabar-backend.onrender.com/"
+
+          for attempt in 1 2 3; do
+            body="$(curl --silent --show-error --fail --max-time 75 "$endpoint" || true)"
+            if [[ "$body" == *'"loyiha":"Futbol Xabar"'* ]]; then
+              echo "Backend is ready (attempt $attempt)."
+              exit 0
+            fi
+
+            echo "Backend is waking up (attempt $attempt)."
+            sleep 15
+          done
+
+          echo "Backend did not become ready in time." >&2
+          exit 1
