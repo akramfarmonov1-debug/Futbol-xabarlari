@@ -1,5 +1,4 @@
-"""Ommaviy yangiliklar API — faqat chop etilgan maqolalar."""
-
+import re
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -98,15 +97,38 @@ def sitemap_articles(
 
 @router.get("/search", response_model=list[ArticleOut])
 def search_news(q: str, db: Session = Depends(get_db), limit: int = Query(default=20, le=100)):
-    """Sarlavha, xulosa va matn bo'yicha qidiruv."""
-    pattern = f"%{q}%"
+    """Sarlavha, xulosa va matn bo'yicha kengaytirilgan qidiruv."""
+    raw_query = q.strip()
+    if not raw_query:
+        return []
+
+    # Har xil tutuq belgilari va shakllar
+    normalized = raw_query.replace("ʻ", "'").replace("’", "'").replace("`", "'")
+    patterns = {f"%{raw_query}%", f"%{normalized}%"}
+    patterns.add(f"%{normalized.replace('\'', 'ʻ')}%")
+    patterns.add(f"%{normalized.replace('\'', '’')}%")
+
+    filters = []
+    for pat in patterns:
+        filters.extend([
+            Article.title.ilike(pat),
+            Article.summary.ilike(pat),
+            Article.content.ilike(pat),
+        ])
+
+    # Ko'p so'zli so'rov bo'lsa, har bir asosiy so'z bo'yicha ham qidirish
+    words = [w for w in re.findall(r"[A-Za-zÀ-žʻʼ’'-]+|\d+", raw_query) if len(w) >= 3]
+    for word in words[:4]:
+        w_norm = word.replace("ʻ", "'").replace("’", "'")
+        filters.extend([
+            Article.title.ilike(f"%{word}%"),
+            Article.title.ilike(f"%{w_norm}%"),
+            Article.summary.ilike(f"%{word}%"),
+        ])
+
     return (
         published(db)
-        .filter(or_(
-            Article.title.ilike(pattern),
-            Article.summary.ilike(pattern),
-            Article.content.ilike(pattern),
-        ))
+        .filter(or_(*filters))
         .order_by(Article.published_at.desc())
         .limit(limit)
         .all()

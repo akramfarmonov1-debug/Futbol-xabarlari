@@ -85,6 +85,16 @@ class NewsRouteTests(unittest.TestCase):
         response = self.client.get("/api/news/yoq-mavjud-emas")
         self.assertEqual(response.status_code, 404)
 
+    def test_search_flexible(self):
+        # Qidiruv tutuq belgilari va so'zlar bo'yicha ishlashi tekshiriladi
+        response = self.client.get("/api/news/search?q=maqola")
+        self.assertEqual(response.status_code, 200)
+        self.assertGreaterEqual(len(response.json()), 1)
+
+        empty_res = self.client.get("/api/news/search?q=")
+        self.assertEqual(empty_res.status_code, 200)
+        self.assertEqual(empty_res.json(), [])
+
 
 if __name__ == "__main__":
     unittest.main()
