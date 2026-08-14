@@ -69,27 +69,47 @@ def is_digest_time(
     return start <= moment <= start + window
 
 
+MONTH_NAMES_UZ = {
+    1: "yanvar", 2: "fevral", 3: "mart", 4: "aprel", 5: "may", 6: "iyun",
+    7: "iyul", 8: "avgust", 9: "sentyabr", 10: "oktyabr", 11: "noyabr", 12: "dekabr",
+}
+NUM_EMOJIS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+
+
 def _digest_articles(
     db: Session,
     day: date,
     limit: int = DAILY_DIGEST_LIMIT,
     min_importance: int = DAILY_DIGEST_MIN_IMPORTANCE,
 ) -> list[Article]:
-    """Kun davomida chop etilgan, muhimligi yetarli maqolalarni tanlaydi."""
-    start = datetime.combine(day, time.min)
-    end = start + timedelta(days=1)
-    return (
+    """Oxirgi 24 soat ichida chop etilgan, eng muhim maqolalarni tanlaydi."""
+    start = datetime.combine(day - timedelta(days=1), time(6, 0))
+    end = datetime.combine(day, time(23, 59, 59))
+    articles = (
         db.query(Article)
         .filter(
             Article.status == "published",
             Article.published_at >= start,
-            Article.published_at < end,
+            Article.published_at <= end,
             Article.importance >= min_importance,
         )
         .order_by(Article.importance.desc(), Article.published_at.desc())
         .limit(limit)
         .all()
     )
+    if not articles:
+        articles = (
+            db.query(Article)
+            .filter(
+                Article.status == "published",
+                Article.published_at >= start,
+                Article.published_at <= end,
+            )
+            .order_by(Article.importance.desc(), Article.published_at.desc())
+            .limit(limit)
+            .all()
+        )
+    return articles
 
 
 def _truncate(text: str, limit: int) -> str:
@@ -100,32 +120,45 @@ def _truncate(text: str, limit: int) -> str:
 
 
 def build_digest_message(articles: list[Article], day: date) -> str:
-    """Maqolalar ro'yxatidan HTML formatdagi dayjest xabari tayyorlaydi."""
+    """Maqolalar ro'yxatidan HTML formatdagi jozibador dayjest xabari tayyorlaydi."""
     if not articles:
         return ""
+    month_str = MONTH_NAMES_UZ.get(day.month, "")
+    date_str = f"{day.day}-{month_str.capitalize()}, {day.year}"
     lines = [
-        "📋 <b>Futbol Xabar — kunning dayjesti</b>",
-        "",
-        f"🗓 {day.strftime('%d %B %Y')} uchun eng muhim yangiliklar:",
+        "🌅 <b>KUNNING ENG MUHIM FUTBOL XABARLARI</b>",
+        f"🗓 <i>{date_str}</i>",
+        "━━━━━━━━━━━━━━━━━━",
         "",
     ]
-    for index, article in enumerate(articles, 1):
+    for index, article in enumerate(articles):
+        num_icon = NUM_EMOJIS[index] if index < len(NUM_EMOJIS) else f"<b>{index+1}.</b>"
         category = article.category.name if article.category else "Futbol"
         title = html.escape(_truncate(article.title, 160))
         url = f"{FRONTEND_ORIGIN}/maqola/{article.slug}"
         stars = "⭐" * max(1, min(5, article.importance))
         lines.append(
-            f"<b>{index}. {title}</b>\n"
-            f"    {stars} • 📂 {html.escape(category)}\n"
-            f"    <a href=\"{url}\">Saytda o'qish</a>"
+            f"{num_icon} <b>{title}</b>\n"
+            f"   {stars} • 📂 {html.escape(category)}\n"
+            f"   👉 <a href=\"{url}\">Batafsil o'qish</a>\n"
         )
+    lines.extend([
+        "━━━━━━━━━━━━━━━━━━",
+        f"🌐 <b>Barcha yangiliklar:</b> <a href=\"{FRONTEND_ORIGIN}\">futbolxabar.uz</a>",
+        "#Dayjest #FutbolXabar",
+    ])
     return "\n".join(lines)
 
 
 def _send_digest(message: str) -> None:
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHANNEL_ID:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN yoki TELEGRAM_CHANNEL_ID sozlanmagan")
+    channel_id = TELEGRAM_CHANNEL_ID.strip()
+    if not channel_id.startswith("@") and not channel_id.startswith("-"):
+        channel_id = f"@{channel_id}"
     api = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
     payload = {
-        "chat_id": TELEGRAM_CHANNEL_ID,
+        "chat_id": channel_id,
         "text": message,
         "parse_mode": "HTML",
         "link_preview_options": {"is_disabled": True},

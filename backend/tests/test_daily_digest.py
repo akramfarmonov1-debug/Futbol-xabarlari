@@ -54,13 +54,13 @@ class DigestMessageTests(unittest.TestCase):
     def test_message_contains_articles(self):
         article = _article()
         message = daily_digest.build_digest_message([article], date(2026, 8, 4))
-        self.assertIn("Futbol Xabar — kunning dayjesti", message)
+        self.assertIn("KUNNING ENG MUHIM FUTBOL XABARLARI", message)
         # HTML-escape qilingan xabar asl matnni o'z ichiga oladi.
         self.assertIn(
             "Liverpul yangi transferni e'lon qildi",
             html.unescape(message),
         )
-        self.assertIn("Saytda o'qish", message)
+        self.assertIn("Batafsil o'qish", message)
         self.assertIn(article.slug, message)
 
     def test_empty_message(self):
@@ -75,7 +75,7 @@ class DigestSelectionTests(unittest.TestCase):
             [
                 _article(title="Muhim xabar", importance=5, published=datetime(2026, 8, 4, 9, 0)),
                 _article(title="O'rtacha xabar", importance=2, published=datetime(2026, 8, 4, 9, 5)),
-                _article(title="Boshqa kun", importance=5, published=datetime(2026, 8, 3, 9, 0)),
+                _article(title="Eski xabar", importance=5, published=datetime(2026, 8, 1, 9, 0)),
             ]
         )
         db.commit()

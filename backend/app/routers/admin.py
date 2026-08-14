@@ -99,6 +99,22 @@ def send_article_to_telegram(article_id: int, background: BackgroundTasks, db: S
     return {"ok": True, "xabar": "Telegram kanaliga yuborildi"}
 
 
+@router.post("/digest/send")
+def trigger_daily_digest(db: Session = Depends(get_db)):
+    """Kunlik dayjestni qo'lda zudlik bilan Telegram kanaliga yuborish."""
+    from ..services.daily_digest import _digest_articles, build_digest_message, _send_digest, now_tashkent
+    moment = now_tashkent()
+    articles = _digest_articles(db, moment.date(), limit=5, min_importance=1)
+    if not articles:
+        raise HTTPException(status_code=404, detail="Yuborish uchun chop etilgan maqolalar topilmadi")
+    message = build_digest_message(articles, moment.date())
+    try:
+        _send_digest(message)
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=str(error))
+    return {"ok": True, "xabar": f"Kunlik dayjest ({len(articles)} ta maqola) muvaffaqiyatli yuborildi"}
+
+
 @router.delete("/articles/{article_id}")
 def delete_article(article_id: int, db: Session = Depends(get_db)):
     article = get_article(db, article_id)
