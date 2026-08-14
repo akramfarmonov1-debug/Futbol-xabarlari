@@ -155,3 +155,16 @@ class PushSubscription(Base):
     auth: Mapped[str] = mapped_column(String(500), default="")
     user_agent: Mapped[str] = mapped_column(String(500), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class LegionnaireAlertLog(Base):
+    """Legionerlar tezkor xabarlari (gol, tarkib, natija) qayta yuborilmasligi uchun log."""
+
+    __tablename__ = "legionnaire_alert_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_key: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    player_slug: Mapped[str] = mapped_column(String(100), index=True)
+    event_type: Mapped[str] = mapped_column(String(50))  # goal, assist, lineup, result
+    message: Mapped[str] = mapped_column(String(1000), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
