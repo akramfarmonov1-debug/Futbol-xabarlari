@@ -2,6 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatUzDate } from "../lib/date";
 
+export function formatViews(count) {
+  if (!count) return "0";
+  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
+  return String(count);
+}
+
 export default function ArticleCard({ article, compact = false }) {
   const stars = "⭐".repeat(Math.max(1, Math.min(5, article.importance)));
   const readingMinutes = Math.max(
@@ -17,8 +24,13 @@ export default function ArticleCard({ article, compact = false }) {
         className="group block rounded-xl border border-slate-900 bg-slate-950/40 p-4 hover:border-emerald-500/30 hover:bg-slate-900/40 transition-all duration-300"
       >
         <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
-          <span className="font-bold text-emerald-500/80 uppercase tracking-wider">{article.category?.name}</span>
-          <span>{stars}</span>
+          <span className="font-bold text-emerald-500/80 uppercase tracking-wider">
+            {article.category?.name}
+          </span>
+          <span className="flex items-center gap-1 text-[11px] text-slate-400 font-medium">
+            <span>👁</span>
+            <span>{formatViews(article.views_count)}</span>
+          </span>
         </div>
         <div className="text-sm font-semibold leading-relaxed text-slate-200 group-hover:text-emerald-400 transition-colors duration-200 line-clamp-2">
           {article.title}
@@ -67,17 +79,20 @@ export default function ArticleCard({ article, compact = false }) {
         </p>
 
         <div className="flex items-center justify-between border-t border-slate-900/80 pt-4 text-xs sm:text-sm font-semibold">
-          <span className="text-slate-500">
-            {date} · {readingMinutes} daqiqa
-          </span>
+          <div className="flex items-center gap-2 text-slate-500 text-xs">
+            <span>{date}</span>
+            <span>•</span>
+            <span className="flex items-center gap-1 font-medium text-slate-400">
+              <span>👁</span>
+              <span>{formatViews(article.views_count)}</span>
+            </span>
+          </div>
           <Link 
             href={`/maqola/${article.slug}`} 
             className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors duration-200"
           >
-            Batafsil 
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
+            O&apos;qish
+            <span className="text-sm">→</span>
           </Link>
         </div>
       </div>

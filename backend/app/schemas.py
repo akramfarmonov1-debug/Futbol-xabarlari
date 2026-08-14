@@ -67,6 +67,7 @@ class ArticleOut(BaseModel):
     sent_to_telegram: bool
     source_published_at: datetime | None
     published_at: datetime | None
+    views_count: int = 0
     created_at: datetime
     updated_at: datetime | None = None
 

@@ -149,37 +149,50 @@ export default async function HomePage() {
           </section>
         )}
 
-        {/* Top 5 Chart */}
+        {/* Top 5 Chart — Eng ko'p o'qilganlar */}
         <section className="rounded-2xl border border-slate-900 bg-slate-950/40 p-5 backdrop-blur-md">
-          <div className="mb-4 flex items-center gap-2 border-b border-slate-900 pb-2.5">
-            <span className="text-base sm:text-lg">🔥</span>
-            <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-200">
-              Top 5 Kunlik
-            </h2>
+          <div className="mb-4 flex items-center justify-between border-b border-slate-900 pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-base sm:text-lg">🔥</span>
+              <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-200">
+                Eng ko‘p o‘qilganlar
+              </h2>
+            </div>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              Top 5
+            </span>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {(top || []).length > 0 ? (
               top.map((article, index) => (
                 <Link
                   key={article.id}
                   href={`/maqola/${article.slug}`}
-                  className="group flex items-start gap-3.5 text-sm hover:bg-slate-900/10 p-1.5 rounded-lg transition-colors"
+                  className="group flex items-start gap-3 text-sm hover:bg-slate-900/30 p-2 rounded-xl transition-all duration-200"
                 >
-                  <span className="text-2xl font-extrabold text-slate-800 group-hover:text-emerald-500/60 transition-colors leading-none w-7 shrink-0 text-center">
+                  <span className="text-xl font-black text-slate-700 group-hover:text-emerald-400 transition-colors leading-none w-6 shrink-0 text-center mt-0.5">
                     0{index + 1}
                   </span>
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500/80">
-                      {article.category?.name}
-                    </span>
-                    <h3 className="font-semibold text-slate-200 group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-bold uppercase tracking-wider text-emerald-500/80">
+                        {article.category?.name}
+                      </span>
+                      <span className="text-slate-500 font-medium flex items-center gap-1">
+                        <span>👁</span>
+                        <span>{article.views_count || 1}</span>
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-slate-200 group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug text-xs">
                       {article.title}
                     </h3>
                   </div>
                 </Link>
               ))
             ) : (
-              <p className="text-xs sm:text-sm text-slate-500">Hali yangiliklar yo&apos;q.</p>
+              <div className="text-center text-xs text-slate-500 py-3">
+                Yangiliklar hali mavjud emas
+              </div>
             )}
           </div>
         </section>

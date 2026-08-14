@@ -37,16 +37,24 @@ def latest_news(
 
 
 @router.get("/top", response_model=list[ArticleOut])
-def top_news(db: Session = Depends(get_db), kunlar: int = 1, limit: int = Query(default=10, le=50)):
-    """Top yangiliklar — muhimlik bahosi bo'yicha (standart: bugungi kun)."""
+def top_news(db: Session = Depends(get_db), kunlar: int = 7, limit: int = Query(default=5, le=50)):
+    """Top yangiliklar — o'qilishlar soni va muhimlik bahosi bo'yicha."""
     since = datetime.utcnow() - timedelta(days=kunlar)
-    return (
+    articles = (
         published(db)
         .filter(Article.published_at >= since)
-        .order_by(Article.importance.desc(), Article.published_at.desc())
+        .order_by(Article.views_count.desc(), Article.importance.desc(), Article.published_at.desc())
         .limit(limit)
         .all()
     )
+    if not articles:
+        articles = (
+            published(db)
+            .order_by(Article.views_count.desc(), Article.importance.desc(), Article.published_at.desc())
+            .limit(limit)
+            .all()
+        )
+    return articles
 
 
 @router.get("/digest", response_model=list[ArticleOut])
@@ -221,5 +229,8 @@ def article_detail(slug: str, db: Session = Depends(get_db)):
     article = published(db).filter(Article.slug == slug).first()
     if not article:
         raise HTTPException(status_code=404, detail="Maqola topilmadi")
+    article.views_count = (article.views_count or 0) + 1
+    db.commit()
+    db.refresh(article)
     return article
 

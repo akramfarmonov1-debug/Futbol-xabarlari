@@ -36,10 +36,14 @@ def ensure_schema() -> None:
     if "articles" not in inspector.get_table_names():
         return
     existing = {column["name"] for column in inspector.get_columns("articles")}
-    if "updated_at" in existing:
-        return
-    column_type = "DATETIME" if DATABASE_URL.startswith("sqlite") else "TIMESTAMP"
-    with engine.begin() as connection:
-        connection.execute(
-            text(f"ALTER TABLE articles ADD COLUMN updated_at {column_type}")
-        )
+    if "updated_at" not in existing:
+        column_type = "DATETIME" if DATABASE_URL.startswith("sqlite") else "TIMESTAMP"
+        with engine.begin() as connection:
+            connection.execute(
+                text(f"ALTER TABLE articles ADD COLUMN updated_at {column_type}")
+            )
+    if "views_count" not in existing:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE articles ADD COLUMN views_count INTEGER DEFAULT 0")
+            )

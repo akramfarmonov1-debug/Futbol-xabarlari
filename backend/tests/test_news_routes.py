@@ -72,8 +72,10 @@ class NewsRouteTests(unittest.TestCase):
         detail = self.client.get("/api/news/maqola-0")
         self.assertEqual(detail.status_code, 200)
         self.assertEqual(detail.json()["slug"], "maqola-0")
-        # "Oxirgi yangilangan" maydoni mavjud.
+        # "Oxirgi yangilangan" va "views_count" maydonlari mavjud.
         self.assertIn("updated_at", detail.json())
+        self.assertIn("views_count", detail.json())
+        self.assertGreaterEqual(detail.json()["views_count"], 1)
 
         related = self.client.get("/api/news/maqola-0/related?limit=3")
         self.assertEqual(related.status_code, 200)

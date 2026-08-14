@@ -155,7 +155,14 @@ export default async function ArticlePage({ params }) {
           )}
           <span className="text-xs font-medium tracking-wide">{stars}</span>
         </div>
-        <span className="text-slate-500 font-semibold">{date}</span>
+        <div className="flex items-center gap-2.5 text-slate-500 font-semibold text-xs">
+          <span className="flex items-center gap-1 text-slate-400 font-medium">
+            <span>👁</span>
+            <span>{article.views_count || 1} marta o‘qildi</span>
+          </span>
+          <span>•</span>
+          <span>{date}</span>
+        </div>
       </div>
 
       {/* Main Title */}
@@ -177,7 +184,7 @@ export default async function ArticlePage({ params }) {
         </div>
       )}
 
-      <div className="mb-6 grid gap-2 rounded-2xl border border-slate-900 bg-slate-950/50 p-4 text-xs text-slate-400 sm:grid-cols-3">
+      <div className="mb-6 grid gap-2 rounded-2xl border border-slate-900 bg-slate-950/50 p-4 text-xs text-slate-400 sm:grid-cols-4">
         <div>
           <span className="block font-bold text-slate-200">Manba</span>
           {article.source_name || "Ochiq manba"}
@@ -187,10 +194,14 @@ export default async function ArticlePage({ params }) {
           Taxminan {readingMinutes} daqiqa
         </div>
         <div>
+          <span className="block font-bold text-slate-200">Ko‘rishlar</span>
+          👁 {article.views_count || 1}
+        </div>
+        <div>
           <span className="block font-bold text-slate-200">Muallif</span>
           Futbol Xabar tahririyati
         </div>
-        <p className="sm:col-span-3 border-t border-slate-900 pt-2 text-[11px] text-slate-500">
+        <p className="sm:col-span-4 border-t border-slate-900 pt-2 text-[11px] text-slate-500">
           Oxirgi yangilangan: {formatUzDateTime(lastUpdated)}
           {sourceDate && ` · Asl xabar e’lon qilingan sana: ${sourceDate}`}
         </p>

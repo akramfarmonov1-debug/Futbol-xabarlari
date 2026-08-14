@@ -55,6 +55,7 @@ class Article(Base):
 
     source_published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    views_count: Mapped[int] = mapped_column(Integer, default=0, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     # "Oxirgi yangilangan" — admin tahriri/tasdiqlashda avtomatik yangilanadi.
     updated_at: Mapped[datetime | None] = mapped_column(
