@@ -103,11 +103,21 @@ def article_buttons(article: Article) -> dict:
         "inline_keyboard": [
             [
                 {
-                    "text": "📖 Saytda o'qish",
+                    "text": "📖 Saytda to‘liq o‘qish",
                     "url": f"{FRONTEND_ORIGIN}/maqola/{article.slug}",
                 },
                 {"text": "🔗 Asl manba", "url": article.original_url},
-            ]
+            ],
+            [
+                {
+                    "text": "🤖 Futbol Xabar Boti",
+                    "url": "https://t.me/Futbolxabari_bot",
+                },
+                {
+                    "text": "📊 Turnir jadvallari",
+                    "url": f"{FRONTEND_ORIGIN}/jadval",
+                },
+            ],
         ]
     }
 
