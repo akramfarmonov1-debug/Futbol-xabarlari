@@ -80,8 +80,9 @@ MIN_CATEGORY_CONFIDENCE = int(os.getenv("MIN_CATEGORY_CONFIDENCE", "75"))
 MIN_FACT_CONFIDENCE = int(os.getenv("MIN_FACT_CONFIDENCE", "80"))
 
 # Muhim yangiliklarni Telegram kanalga avtomatik yuborish
-AUTO_TELEGRAM = _bool("AUTO_TELEGRAM", "false")
-AUTO_TELEGRAM_MIN_IMPORTANCE = int(os.getenv("AUTO_TELEGRAM_MIN_IMPORTANCE", "4"))
+AUTO_TELEGRAM = _bool("AUTO_TELEGRAM", "true")
+AUTO_TELEGRAM_MIN_IMPORTANCE = int(os.getenv("AUTO_TELEGRAM_MIN_IMPORTANCE", "1"))
+
 
 # Kunlik dayjest: har kuni DAILY_DIGEST_TIME (Toshkent vaqti) da kanalga
 # bugungi muhim yangiliklarni bitta xulosa posti sifatida yuborish.

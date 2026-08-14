@@ -8,8 +8,6 @@ services:
     rootDir: backend
     envVars:
       - key: DATABASE_URL
-        # Tashqi Neon PostgreSQL ulanishi Render Dashboard'da secret sifatida
-        # saqlanadi. Connection string'ni repoga yozmang.
         sync: false
       - key: GEMINI_API_KEY
         sync: false
@@ -33,28 +31,12 @@ services:
         value: "true"
       - key: AUTO_PUBLISH_MIN_IMPORTANCE
         value: "1"
-      - key: AUTO_PUBLISH_MIN_FOOTBALL_CONFIDENCE
-        value: "90"
-      - key: AUTO_PUBLISH_MIN_CATEGORY_CONFIDENCE
-        value: "90"
-      - key: AUTO_PUBLISH_MIN_FACT_CONFIDENCE
-        value: "90"
-      - key: AUTO_PUBLISH_TRUSTED_SOURCES
-        value: "BBC Sport Football,The Guardian Football,Sky Sports Football,ESPN Soccer,Sports.uz"
-      - key: MIN_FOOTBALL_CONFIDENCE
-        value: "85"
-      - key: MIN_CATEGORY_CONFIDENCE
-        value: "75"
-      - key: MIN_FACT_CONFIDENCE
-        value: "80"
       - key: AUTO_TELEGRAM
         value: "true"
+      - key: AUTO_TELEGRAM_MIN_IMPORTANCE
+        value: "1"
       - key: PIPELINE_INTERVAL
         value: "3600"
-      - key: THESPORTSDB_API_KEY
-        value: "123"
-      - key: API_FOOTBALL_KEY
-        sync: false
       - key: FRONTEND_ORIGIN
         value: "https://futbolxabar.uz"
       - key: DAILY_DIGEST
