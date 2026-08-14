@@ -19,6 +19,7 @@ from ..config import (
     GEMINI_MODEL,
     GOOGLE_CLOUD_LOCATION,
     GOOGLE_CLOUD_PROJECT,
+    GOOGLE_SERVICE_ACCOUNT_JSON,
     VERTEX_GEMINI_MODEL,
 )
 from .content_quality import normalize_analysis
@@ -146,17 +147,26 @@ _vertex_project = ""
 
 
 def _analyze_with_vertex(user_text: str) -> dict:
-    """Vertex AI generateContent — ADC/service account bilan autentifikatsiya."""
+    """Vertex AI generateContent — ADC yoki GOOGLE_SERVICE_ACCOUNT_JSON bilan autentifikatsiya."""
     global _vertex_credentials, _vertex_project
 
     import google.auth
     from google.auth.transport.requests import Request
+    from google.oauth2 import service_account
 
     if _vertex_credentials is None:
-        _vertex_credentials, detected_project = google.auth.default(
-            scopes=["https://www.googleapis.com/auth/cloud-platform"]
-        )
-        _vertex_project = GOOGLE_CLOUD_PROJECT or detected_project or ""
+        if GOOGLE_SERVICE_ACCOUNT_JSON:
+            info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+            _vertex_credentials = service_account.Credentials.from_service_account_info(
+                info,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"],
+            )
+            _vertex_project = GOOGLE_CLOUD_PROJECT or info.get("project_id") or ""
+        else:
+            _vertex_credentials, detected_project = google.auth.default(
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+            _vertex_project = GOOGLE_CLOUD_PROJECT or detected_project or ""
 
     if not _vertex_project:
         raise RuntimeError("GOOGLE_CLOUD_PROJECT aniqlanmadi")
@@ -165,11 +175,10 @@ def _analyze_with_vertex(user_text: str) -> dict:
         _vertex_credentials.refresh(Request())
 
     schema = {k: v for k, v in ANALYSIS_SCHEMA.items() if k != "additionalProperties"}
-    url = (
-        "https://aiplatform.googleapis.com/v1/projects/"
-        f"{_vertex_project}/locations/{GOOGLE_CLOUD_LOCATION}/publishers/google/models/"
-        f"{VERTEX_GEMINI_MODEL}:generateContent"
-    )
+    models_to_try = [VERTEX_GEMINI_MODEL]
+    if VERTEX_GEMINI_MODEL != "gemini-2.5-flash":
+        models_to_try.append("gemini-2.5-flash")
+
     payload = {
         "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": [{"role": "user", "parts": [{"text": user_text}]}],
@@ -179,23 +188,30 @@ def _analyze_with_vertex(user_text: str) -> dict:
             "maxOutputTokens": 8192,
         },
     }
-    response = httpx.post(
-        url,
-        json=payload,
-        headers={"Authorization": f"Bearer {_vertex_credentials.token}"},
-        timeout=120,
-    )
-    if response.status_code != 200:
-        raise RuntimeError(
-            f"Vertex AI xatosi {response.status_code}: {response.text[:300]}"
-        )
 
-    data = response.json()
-    try:
-        text = data["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError):
-        raise RuntimeError(f"Vertex AI javobi kutilmagan formatda: {json.dumps(data)[:300]}")
-    return json.loads(text)
+    last_error = None
+    for model_name in models_to_try:
+        url = (
+            "https://aiplatform.googleapis.com/v1/projects/"
+            f"{_vertex_project}/locations/{GOOGLE_CLOUD_LOCATION}/publishers/google/models/"
+            f"{model_name}:generateContent"
+        )
+        response = httpx.post(
+            url,
+            json=payload,
+            headers={"Authorization": f"Bearer {_vertex_credentials.token}"},
+            timeout=120,
+        )
+        if response.status_code == 200:
+            data = response.json()
+            try:
+                text = data["candidates"][0]["content"]["parts"][0]["text"]
+                return json.loads(text)
+            except (KeyError, IndexError):
+                raise RuntimeError(f"Vertex AI javobi kutilmagan formatda: {json.dumps(data)[:300]}")
+        last_error = f"Vertex AI xatosi ({model_name}) {response.status_code}: {response.text[:300]}"
+
+    raise RuntimeError(last_error or "Vertex AI orqali tahlil qilib bo'lmadi")
 
 
 def _analyze_with_claude(user_text: str) -> dict:
