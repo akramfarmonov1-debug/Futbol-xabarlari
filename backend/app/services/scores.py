@@ -47,9 +47,23 @@ def _cached(key: str, ttl: int, producer):
     hit = _cache.get(key)
     if hit and now - hit[0] < ttl:
         return hit[1]
-    value = producer()
-    _cache[key] = (now, value)
-    return value
+
+    try:
+        value = producer()
+        if value is not None:
+            # Agar bo'sh ro'yxat qaytsa va bizda eski yaxshi ma'lumot bo'lsa, eskisini saqlab qolamiz
+            if isinstance(value, list) and len(value) == 0 and hit and hit[1]:
+                return hit[1]
+            _cache[key] = (now, value)
+            return value
+    except Exception as err:
+        print(f"  ⚠ scores kesh yangilash xatosi ({key}): {err}")
+
+    # Agar API xato bersa yoki javob bo'sh bo'lsa, eski keshni saqlab qaytaramiz (Stale-While-Revalidate)
+    if hit and hit[1] is not None:
+        return hit[1]
+
+    return [] if key == "today" else None
 
 
 def _get(path: str, params: dict | None = None) -> dict | None:

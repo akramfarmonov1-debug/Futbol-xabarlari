@@ -85,6 +85,30 @@ class NewsRouteTests(unittest.TestCase):
         response = self.client.get("/api/news/yoq-mavjud-emas")
         self.assertEqual(response.status_code, 404)
 
+    def test_search_flexible(self):
+        response = self.client.get("/api/news/search?q=maqola")
+        self.assertEqual(response.status_code, 200)
+        self.assertGreaterEqual(len(response.json()), 1)
+
+        empty_res = self.client.get("/api/news/search?q=")
+        self.assertEqual(empty_res.status_code, 200)
+        self.assertEqual(empty_res.json(), [])
+
+    def test_legionnaires_routes(self):
+        res = self.client.get("/api/legionnaires")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIsInstance(data, list)
+        self.assertGreaterEqual(len(data), 1)
+        first_slug = data[0]["slug"]
+
+        detail = self.client.get(f"/api/legionnaires/{first_slug}")
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.json()["slug"], first_slug)
+
+        missing = self.client.get("/api/legionnaires/not-found-player")
+        self.assertEqual(missing.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

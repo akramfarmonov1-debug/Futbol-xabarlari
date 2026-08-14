@@ -3,6 +3,7 @@ import Link from "next/link";
 import ArticleCard from "../components/ArticleCard";
 import AdPlaceholder from "../components/AdPlaceholder";
 import LiveScores from "../components/LiveScores";
+import LegionnairesWidget from "../components/LegionnairesWidget";
 import { apiGet } from "../lib/api";
 import { formatUzDate } from "../lib/date";
 
@@ -91,6 +92,9 @@ export default async function HomePage() {
             </div>
           </section>
         )}
+
+        {/* Legionnaires Feature Block */}
+        <LegionnairesWidget />
 
         {/* Regular Articles Feed */}
         <section>

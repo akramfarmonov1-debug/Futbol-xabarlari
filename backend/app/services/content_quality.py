@@ -82,7 +82,7 @@ TEXT_REPLACEMENTS = (
     ("Ã³", "ó"),
     ("â€™", "’"),
     ("â€œ", "“"),
-    ("â€", "”"),
+    ("â€ ", "”"),
     ("â€“", "–"),
     ("â€”", "—"),
 )
@@ -169,7 +169,22 @@ def is_football_content(
 
 
 def _evidence_text(value: str) -> str:
-    return re.sub(r"[^a-z0-9а-яёўқғҳ]+", " ", value.lower()).strip()
+    return re.sub(r"[^a-z0-9а-яёўқғҳ]+", " ", str(value or "").lower()).strip()
+
+
+def _is_evidence_supported(evidence_str: str, normalized_source: str) -> bool:
+    """Fakt dalili manba matnida borligini tekshiradi."""
+    evidence = _evidence_text(evidence_str)
+    if len(evidence) < 8:
+        return False
+    if evidence in normalized_source:
+        return True
+    evidence_tokens = [w for w in re.findall(r"[a-z0-9а-яёўқғҳ]+", evidence) if len(w) >= 3]
+    if not evidence_tokens:
+        return False
+    source_tokens = set(re.findall(r"[a-z0-9а-яёўқғҳ]+", normalized_source))
+    matching = sum(1 for token in evidence_tokens if token in source_tokens)
+    return (matching / len(evidence_tokens)) >= 0.65
 
 
 # O'zbekcha tahrir qoidalari — NEXT_TASKS #2 bo'yicha.
@@ -290,8 +305,7 @@ def analysis_is_publishable(
                 continue
             if not all(normalize_text(fact.get(key)) for key in ("subject", "predicate", "value")):
                 reasons.append(f"{index}-fakt to'liq emas")
-            evidence = _evidence_text(str(fact.get("evidence") or ""))
-            if len(evidence) < 10 or evidence not in normalized_source:
+            if not _is_evidence_supported(str(fact.get("evidence") or ""), normalized_source):
                 reasons.append(f"{index}-fakt dalili manbada topilmadi")
 
         if not normalize_text(analysis.get("event_key")):

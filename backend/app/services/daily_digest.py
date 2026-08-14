@@ -27,6 +27,7 @@ from ..config import (
 )
 from ..database import SessionLocal
 from ..models import Article, DailyDigestLog
+from ..utils import safe_print
 from .runtime_lock import DIGEST_LOCK_ID, release_runtime_lock, try_runtime_lock
 
 # Toshkent vaqti = UTC+5
@@ -148,7 +149,7 @@ def send_daily_digest(db: Session, moment: datetime | None = None) -> bool:
 
     lock = try_runtime_lock(DIGEST_LOCK_ID)
     if not lock.acquired:
-        print("⏭ Dayjest boshqa instance'da ishlayapti; o'tkazib yuborildi.")
+        safe_print("⏭ Dayjest boshqa instance'da ishlayapti; o'tkazib yuborildi.")
         return False
     try:
         day = moment.date()
@@ -163,7 +164,7 @@ def send_daily_digest(db: Session, moment: datetime | None = None) -> bool:
         articles = _digest_articles(db, day)
         if not articles:
             # Bugun hali muhim yangilik yo'q — keyingi tekshiruvlarda qayta uriniladi.
-            print("📋 Dayjest: bugungi muhim yangiliklar topilmadi.")
+            safe_print("📋 Dayjest: bugungi muhim yangiliklar topilmadi.")
             return False
 
         message = build_digest_message(articles, day)
@@ -175,7 +176,7 @@ def send_daily_digest(db: Session, moment: datetime | None = None) -> bool:
             )
         )
         db.commit()
-        print(f"📋 Kunlik dayjest yuborildi ({len(articles)} ta yangilik).")
+        safe_print(f"📋 Kunlik dayjest yuborildi ({len(articles)} ta yangilik).")
         return True
     finally:
         release_runtime_lock(lock)
@@ -191,5 +192,5 @@ async def run_digest_loop() -> None:
             finally:
                 db.close()
         except Exception as error:
-            print(f"❌ Kunlik dayjest xatosi: {error}")
+            safe_print(f"❌ Kunlik dayjest xatosi: {error}")
         await asyncio.sleep(DAILY_DIGEST_INTERVAL)
