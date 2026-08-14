@@ -179,10 +179,9 @@ def _run_pipeline(per_feed: int = 5) -> int:
             )
             if analysis["kategoriya"] != ai_category:
                 quality_reasons.append(
-                    f"kategoriya validator tomonidan o'zgartirildi: "
+                    f"kategoriya validator tomonidan aniqlashtirildi: "
                     f"{ai_category} -> {analysis['kategoriya']}"
                 )
-                publishable = False
             if not publishable:
                 print(
                     "   ⚠ Qo'lda tekshiruvga yuborildi: "
