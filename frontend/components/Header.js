@@ -61,8 +61,15 @@ export default async function Header() {
             qilinadi, planshet (640-1024px) da sahifani kengaytirmaydi. */}
         <nav className="flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto pb-1 hide-scrollbar custom-scrollbar">
           <Link
+            href="/legionerlar"
+            className="flex shrink-0 items-center gap-1 rounded-full border border-sky-500/20 bg-sky-500/10 px-3.5 py-1.5 text-xs font-semibold text-sky-400 hover:bg-sky-500 hover:text-slate-950 transition-all duration-200 shadow-sm shadow-sky-500/5"
+          >
+            🇺🇿 Legionerlar
+          </Link>
+
+          <Link
             href="/jadval"
-            className="flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 transition-all duration-200 shadow-sm shadow-emerald-500/5"
+            className="flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 transition-all duration-200 shadow-sm shadow-emerald-500/5"
           >
             🏆 Turnir Jadvali
           </Link>
