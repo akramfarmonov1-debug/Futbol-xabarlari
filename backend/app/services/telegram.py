@@ -116,29 +116,47 @@ def send_to_channel(article: Article) -> None:
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHANNEL_ID:
         raise RuntimeError("TELEGRAM_BOT_TOKEN yoki TELEGRAM_CHANNEL_ID sozlanmagan")
 
+    channel_id = TELEGRAM_CHANNEL_ID.strip()
+    if not channel_id.startswith("@") and not channel_id.startswith("-"):
+        channel_id = f"@{channel_id}"
+
     api = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 
-    if article.image_url:
-        text = format_post(article, max_caption_len=1024)
-        payload = {
-            "chat_id": TELEGRAM_CHANNEL_ID,
-            "photo": article.image_url,
-            "caption": text,
-            "parse_mode": "HTML",
-            "reply_markup": article_buttons(article),
-        }
-        response = httpx.post(f"{api}/sendPhoto", json=payload, timeout=30)
-    else:
+    sent = False
+    # Agar maqolada rasm bo'lsa, avval rasm bilan yuborishga urinamiz
+    if article.image_url and article.image_url.startswith("http"):
+        try:
+            text = format_post(article, max_caption_len=1024)
+            payload = {
+                "chat_id": channel_id,
+                "photo": article.image_url,
+                "caption": text,
+                "parse_mode": "HTML",
+                "reply_markup": article_buttons(article),
+            }
+            response = httpx.post(f"{api}/sendPhoto", json=payload, timeout=25)
+            data = response.json()
+            if data.get("ok"):
+                sent = True
+            else:
+                print(
+                    f"  ⚠ Telegram sendPhoto rad etildi ({data.get('description')}), "
+                    f"matn ko'rinishida yuborilmoqda..."
+                )
+        except Exception as photo_err:
+            print(f"  ⚠ Telegram photo so'rovida xatolik: {photo_err}")
+
+    # Agar rasm bo'lmasa yoki rasm yuborishda xatolik bo'lsa, to'liq matn bilan yuboramiz
+    if not sent:
         text = format_post(article, max_caption_len=4096)
         payload = {
-            "chat_id": TELEGRAM_CHANNEL_ID,
+            "chat_id": channel_id,
             "text": text,
             "parse_mode": "HTML",
             "link_preview_options": {"is_disabled": True},
             "reply_markup": article_buttons(article),
         }
-        response = httpx.post(f"{api}/sendMessage", json=payload, timeout=30)
-
-    data = response.json()
-    if not data.get("ok"):
-        raise RuntimeError(f"Telegram xatosi: {data.get('description')}")
+        response = httpx.post(f"{api}/sendMessage", json=payload, timeout=25)
+        data = response.json()
+        if not data.get("ok"):
+            raise RuntimeError(f"Telegram API xatosi: {data.get('description')}")

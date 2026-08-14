@@ -15,6 +15,7 @@ from ..schemas import (
     IngestionDecisionOut,
     StatsOut,
 )
+from ..config import AUTO_TELEGRAM, TELEGRAM_BOT_TOKEN
 from ..services.telegram import send_to_channel
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -57,12 +58,18 @@ def update_article(article_id: int, data: ArticleUpdate, db: Session = Depends(g
 
 @router.post("/articles/{article_id}/approve", response_model=AdminArticleOut)
 def approve_article(article_id: int, db: Session = Depends(get_db)):
-    """Maqolani tasdiqlash — saytga chiqariladi."""
+    """Maqolani tasdiqlash — saytga chiqariladi va Telegram kanalga yuboriladi."""
     article = get_article(db, article_id)
     article.status = "published"
     article.published_at = datetime.utcnow()
     if article.quality:
         article.quality.decision = "approved_manual"
+    if AUTO_TELEGRAM and TELEGRAM_BOT_TOKEN and not article.sent_to_telegram:
+        try:
+            send_to_channel(article)
+            article.sent_to_telegram = True
+        except Exception as error:
+            print(f"  ⚠ Admin tasdiqlashda Telegram xatosi: {error}")
     db.commit()
     db.refresh(article)
     return article
