@@ -234,9 +234,9 @@ def analysis_is_publishable(
         reasons.append(
             f"sarlavha uzunligi noto'g'ri (15-{MAX_TITLE_LENGTH} belgi bo'lishi kerak)"
         )
-    if len(summary) < 80:
+    if len(summary) < 40:
         reasons.append("xulosa juda qisqa")
-    if len(content) < 250:
+    if len(content) < 120:
         reasons.append("maqola juda qisqa")
     if "\n" in title:
         reasons.append("sarlavhada yangi qator bor")
