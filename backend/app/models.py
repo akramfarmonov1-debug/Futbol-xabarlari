@@ -142,3 +142,16 @@ class DailyDigestLog(Base):
     digest_date: Mapped[str] = mapped_column(String(10), unique=True, index=True)
     articles_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class PushSubscription(Base):
+    """Brauzer Web Push bildirishnomalari uchun obuna."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    endpoint: Mapped[str] = mapped_column(String(1000), unique=True, index=True)
+    p256dh: Mapped[str] = mapped_column(String(500), default="")
+    auth: Mapped[str] = mapped_column(String(500), default="")
+    user_agent: Mapped[str] = mapped_column(String(500), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

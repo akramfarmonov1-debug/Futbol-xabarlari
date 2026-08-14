@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import DAILY_DIGEST, FRONTEND_ORIGIN, MEDIA_DIR
 from .database import Base, SessionLocal, engine, ensure_schema
-from .routers import admin, categories, legionnaires, news, scores
+from .routers import admin, categories, legionnaires, news, push, scores
 from .seed import seed_categories
 from .pipeline import run_pipeline
 from .bot.bot import main as run_bot
@@ -110,6 +110,7 @@ app.include_router(categories.router)
 app.include_router(admin.router)
 app.include_router(scores.router)
 app.include_router(legionnaires.router)
+app.include_router(push.router)
 
 # Generatsiya qilingan rasmlar (IMAGE_GENERATION=true rejimi uchun)
 Path(MEDIA_DIR).mkdir(parents=True, exist_ok=True)

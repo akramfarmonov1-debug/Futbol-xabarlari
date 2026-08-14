@@ -60,3 +60,48 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// Web Push bildirishnomalarini qabul qilish
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = {
+      title: "Futbol Xabar",
+      body: event.data ? event.data.text() : "Yangi qaynoq futbol xabari!",
+    };
+  }
+
+  const title = data.title || "Futbol Xabar";
+  const options = {
+    body: data.body || "Eng so'nggi qaynoq futbol xabari!",
+    icon: data.icon || "/icon-192",
+    badge: "/icon-192",
+    vibrate: [100, 50, 100],
+    data: {
+      url: data.url || "/",
+    },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Bildirishnoma bosilganda saytni ochish
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || "/";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url === targetUrl && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});

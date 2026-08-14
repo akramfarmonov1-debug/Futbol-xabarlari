@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { apiGet } from "../lib/api";
+import NotificationBell from "./NotificationBell";
 
 export default async function Header() {
   const categories = (await apiGet("/api/categories")) || [];
@@ -50,10 +51,13 @@ export default async function Header() {
                 name="q"
                 type="text"
                 placeholder="Qidiruv..."
-                className="w-40 sm:w-56 rounded-full border border-slate-800 bg-slate-900/60 px-4 py-2 pl-9 text-xs text-white outline-none focus:border-emerald-500 focus:bg-slate-900/90 transition-all duration-200"
+                className="w-36 sm:w-52 rounded-full border border-slate-800 bg-slate-900/60 px-4 py-2 pl-9 text-xs text-white outline-none focus:border-emerald-500 focus:bg-slate-900/90 transition-all duration-200"
               />
               <span className="absolute left-3.5 text-slate-500 text-xs">🔍</span>
             </form>
+
+            {/* Push Notification Bell */}
+            <NotificationBell />
           </div>
         </div>
 
