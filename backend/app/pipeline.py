@@ -11,9 +11,11 @@ Muntazam ishlashi uchun cron'ga qo'ying, masalan har soatda:
   0 * * * * cd /path/backend && .venv/bin/python -m app.pipeline
 """
 
+import re
 from datetime import datetime
 
 from .config import (
+    AI_PROVIDER,
     AUTO_PUBLISH,
     AUTO_TELEGRAM,
     AUTO_TELEGRAM_MIN_IMPORTANCE,
@@ -23,7 +25,7 @@ from .config import (
 from .database import Base, SessionLocal, engine, ensure_schema
 from .models import Article, ArticleQuality, Category
 from .seed import seed_categories
-from .services.ai_agent import analyze_news
+from .services.ai_agent import active_model, analyze_news
 from .services.collector import (
     collect_news,
     improve_image_url,
@@ -51,11 +53,60 @@ from .services.telegram import send_to_channel
 from .utils import slugify
 
 
+# Oxirgi ishga tushirish tafsilotlari — /health orqali ko'rinadi, shuning uchun
+# server loglariga kirmasdan ham nima yiqilganini bilish mumkin.
+LAST_RUN: dict = {
+    "provider": AI_PROVIDER,
+    "model": active_model(),
+    "collected": None,
+    "saved": None,
+    "non_football": None,
+    "duplicates": None,
+    "ai_errors": None,
+    "needs_review": None,
+    "telegram_sent": None,
+    "skipped_locked": None,
+    "last_ai_error": None,
+    "last_telegram_error": None,
+}
+
+
+# Xato matnida maxfiy ma'lumot bo'lishi mumkin: masalan
+# GOOGLE_APPLICATION_CREDENTIALS ga yo'l o'rniga JSON kalit qo'yilsa,
+# google-auth butun kalitni xato matniga qo'shib yuboradi. /health esa ochiq
+# endpoint — shuning uchun tashqariga chiqishdan oldin tozalanadi.
+_SECRET_MARKERS = ('"private_key"', "-----BEGIN", "PRIVATE KEY")
+_SECRET_PATTERNS = [
+    re.compile(r"\b(?:gho_|ghp_|github_pat_|sk-ant-|sk-|AIza)[A-Za-z0-9_\-]{8,}"),
+    re.compile(r"\b\d{8,10}:[A-Za-z0-9_\-]{30,}"),  # Telegram bot tokeni
+]
+
+
+def redact_secrets(text: str) -> str:
+    """Maxfiy qiymatlarni xato matnidan olib tashlaydi."""
+    cut = min((i for i in (text.find(m) for m in _SECRET_MARKERS) if i != -1), default=-1)
+    if cut != -1:
+        text = f"{text[:cut]}<maxfiy ma'lumot olib tashlandi>"
+    for pattern in _SECRET_PATTERNS:
+        text = pattern.sub("<maxfiy>", text)
+    return text
+
+
+def format_error(error: BaseException, limit: int = 300) -> str:
+    """Xatoni bitta qatorga jamlaydi (JSON javobiga qo'yish uchun)."""
+    text = redact_secrets(" ".join(f"{type(error).__name__}: {error}".split()))
+    return text if len(text) <= limit else f"{text[: limit - 1]}…"
+
+
 def run_pipeline(per_feed: int = 5) -> int:
     runtime_lock = try_runtime_lock(PIPELINE_LOCK_ID)
     if not runtime_lock.acquired:
         print("⏭ Pipeline boshqa instance'da ishlayapti; bu ishga tushirish o'tkazib yuborildi.")
+        # Bu ham /health da ko'rinsin: aks holda quvur "hech narsa qilmayapti"
+        # bo'lib ko'rinadi va sababi noma'lum qoladi.
+        LAST_RUN["skipped_locked"] = True
         return 0
+    LAST_RUN["skipped_locked"] = False
 
     try:
         return _run_pipeline(per_feed)
@@ -68,6 +119,25 @@ def _run_pipeline(per_feed: int = 5) -> int:
     ensure_schema()
     db = SessionLocal()
     saved = 0
+    collected = 0
+    non_football = 0
+    duplicates = 0
+    ai_errors = 0
+    needs_review = 0
+    telegram_sent = 0
+    LAST_RUN.update({
+        "provider": AI_PROVIDER,
+        "model": active_model(),
+        "collected": 0,
+        "saved": 0,
+        "non_football": 0,
+        "duplicates": 0,
+        "ai_errors": 0,
+        "needs_review": 0,
+        "telegram_sent": 0,
+        "last_ai_error": None,
+        "last_telegram_error": None,
+    })
     try:
         seed_categories(db)
         categories = {c.slug: c for c in db.query(Category).all()}
@@ -85,6 +155,7 @@ def _run_pipeline(per_feed: int = 5) -> int:
 
         print("📡 Yangiliklar yig'ilmoqda...")
         fresh = collect_news(db, per_feed=per_feed)
+        collected = len(fresh)
         print(f"   {len(fresh)} ta yangi yangilik topildi.")
 
         for i, news in enumerate(fresh, 1):
@@ -103,6 +174,7 @@ def _run_pipeline(per_feed: int = 5) -> int:
                     decision="non_football",
                     reasons=["Pipeline futbol filtri rad etdi"],
                 )
+                non_football += 1
                 print("   ✗ Futbolga aloqasiz xabar o'tkazib yuborildi")
                 continue
 
@@ -130,6 +202,7 @@ def _run_pipeline(per_feed: int = 5) -> int:
                     reasons=list(duplicate_match.reasons),
                     matched_article_id=duplicate.id,
                 )
+                duplicates += 1
                 print(
                     f"   ↪ Dublikat voqea: {duplicate.slug} "
                     f"(score={duplicate_match.score})"
@@ -151,6 +224,8 @@ def _run_pipeline(per_feed: int = 5) -> int:
                     decision="ai_error",
                     reasons=[str(error)[:500]],
                 )
+                ai_errors += 1
+                LAST_RUN["last_ai_error"] = format_error(error)
                 print(f"   ✗ Tahlil xatosi: {error}")
                 continue
 
@@ -183,6 +258,7 @@ def _run_pipeline(per_feed: int = 5) -> int:
                     f"{ai_category} -> {analysis['kategoriya']}"
                 )
             if not publishable:
+                needs_review += 1
                 print(
                     "   ⚠ Qo'lda tekshiruvga yuborildi: "
                     + ", ".join(quality_reasons)
@@ -216,6 +292,7 @@ def _run_pipeline(per_feed: int = 5) -> int:
                     reasons=list(duplicate_match.reasons),
                     matched_article_id=duplicate.id,
                 )
+                duplicates += 1
                 print(
                     f"   ↪ AI tahlilidan keyin dublikat: {duplicate.slug} "
                     f"(score={duplicate_match.score})"
@@ -341,8 +418,10 @@ def _run_pipeline(per_feed: int = 5) -> int:
                     send_to_channel(article)
                     article.sent_to_telegram = True
                     db.commit()
+                    telegram_sent += 1
                     print("   ✓ Telegram kanalga yuborildi")
                 except Exception as error:
+                    LAST_RUN["last_telegram_error"] = format_error(error)
                     print(f"   ✗ Telegram xatosi: {error}")
 
         mode = (
@@ -353,6 +432,16 @@ def _run_pipeline(per_feed: int = 5) -> int:
         print(f"\n✅ {saved} ta maqola saqlandi ({mode}).")
         return saved
     finally:
+        # Xato bilan tugasa ham hisoblagichlar /health uchun yangilanadi.
+        LAST_RUN.update({
+            "collected": collected,
+            "saved": saved,
+            "non_football": non_football,
+            "duplicates": duplicates,
+            "ai_errors": ai_errors,
+            "needs_review": needs_review,
+            "telegram_sent": telegram_sent,
+        })
         db.close()
 
 

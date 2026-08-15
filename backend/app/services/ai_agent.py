@@ -284,6 +284,20 @@ def _analyze_with_claude(user_text: str) -> dict:
     return json.loads(text)
 
 
+def active_model() -> str:
+    """Hozir qaysi model ishlatilayotgani.
+
+    `analyze_news` bilan bir xil shartlarni ishlatadi, shuning uchun /health
+    dagi qiymat har doim haqiqatga mos bo'ladi — server environment kod
+    standartini bekor qilgan-qilmagani ham shundan ko'rinadi.
+    """
+    if AI_PROVIDER == "claude":
+        return CLAUDE_MODEL
+    if AI_PROVIDER == "vertex":
+        return VERTEX_GEMINI_MODEL
+    return GEMINI_MODEL
+
+
 def analyze_news(title: str, content: str, url: str = "", source: str = "") -> dict:
     """Bitta yangilikni tahlil qilib, o'zbekcha tayyor maqola ma'lumotlarini qaytaradi."""
     user_text = f"Title: {title}\nSource: {source}\nURL: {url}\n\n{content}"
