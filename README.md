@@ -168,7 +168,7 @@ Sozlamalar (`.env`):
 | `MIN_CATEGORY_CONFIDENCE` | `75` | Kategoriya uchun minimal confidence |
 | `MIN_FACT_CONFIDENCE` | `80` | Faktlar uchun minimal confidence |
 | `AUTO_TELEGRAM` | `false` | Muhim yangiliklarni kanalga avto-yuborish |
-| `AUTO_TELEGRAM_MIN_IMPORTANCE` | `4` | Kanalga yuborish uchun minimal baho |
+| `AUTO_TELEGRAM_MIN_IMPORTANCE` | `3` | Kanalga yuborish uchun minimal baho |
 | `PIPELINE_INTERVAL` | `3600` | Pipeline qayta ishga tushish oralig'i, soniyada |
 | `MAX_NEWS_AGE_DAYS` | `3` | RSS'dan olinadigan xabarlarning maksimal yoshi |
 

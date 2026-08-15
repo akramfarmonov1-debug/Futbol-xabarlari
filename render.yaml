@@ -20,7 +20,10 @@ services:
       - key: GOOGLE_CLOUD_LOCATION
         value: "global"
       - key: VERTEX_GEMINI_MODEL
-        value: "gemini-2.5-flash-lite"
+        # Jonli servis 2026-08-15 holatiga shu modelda ishlayapti (/health).
+        # Bu fayl "gemini-2.5-flash-lite" da qolib ketgan edi — blueprint
+        # qayta qo'llanganda model jimgina pasayib ketardi.
+        value: "gemini-3.7-flash"
       - key: ADMIN_TOKEN
         sync: false
       - key: TELEGRAM_BOT_TOKEN
@@ -34,7 +37,9 @@ services:
       - key: AUTO_TELEGRAM
         value: "true"
       - key: AUTO_TELEGRAM_MIN_IMPORTANCE
-        value: "1"
+        # Kalibrlangan shkalada 2 — quyi divizion natijalari va mish-mishlar;
+        # kanalga 3 dan boshlab ketadi (transfer, murabbiy, top-liga).
+        value: "3"
       - key: PIPELINE_INTERVAL
         value: "3600"
       - key: FRONTEND_ORIGIN
