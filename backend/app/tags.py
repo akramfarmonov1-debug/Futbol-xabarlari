@@ -13,40 +13,41 @@ Teg ikki qismga ajratiladi:
 
 import re
 
-# Kanonik yozuv -> unga olib keladigan variantlar (kalit ko'rinishida: kichik
-# harf, apostrofsiz). Kanonik yozuvning o'zi avtomatik qo'shiladi.
-# Futbolchi ismlari bu yerga kiritilmaydi — ular cheksiz, ularni `_stable_case`
-# bir xil yozuvga keltiradi.
+from .services.names_glossary import canonicalize_names
+
+# Klub, futbolchi va turnir nomlari bu yerda TAKRORLANMAYDI. Ular
+# `names_glossary` da, saytning yagona yozuv konvensiyasi bilan belgilangan
+# (Chelsea -> Chelsi, PSG -> PSJ, Bayern -> Bavariya) va `canonical_tag` avval
+# o'shani qo'llaydi. Ikkinchi ro'yxat tutish teg bilan maqola matnini
+# qarama-qarshi qo'yardi: matnda "Chelsi", tegda "Chelsea".
+#
+# Bu yerda faqat lug'at qamramaydigan narsalar: kirill yozuvi, qisqartmalar va
+# mavzu teglari. Kanonik yozuvning o'zi avtomatik qo'shiladi.
 _ALIAS_GROUPS: dict[str, tuple[str, ...]] = {
-    # Angliya
-    "Manchester United": ("man united", "man utd", "manchester utd", "mu", "манчестер юнайтед"),
-    "Manchester City": ("man city", "man siti", "manchester siti", "манчестер сити"),
-    "Liverpool": ("liverpul", "ливерпуль"),
-    "Chelsea": ("chelsi", "челси"),
+    # Kirill variantlar — Sports.uz manbasi kirillchada keladi
+    "Real Madrid": ("реал", "реал мадрид"),
+    "Barselona": ("барселона",),
+    "Chelsi": ("челси",),
+    "Liverpul": ("ливерпуль",),
     "Arsenal": ("арсенал",),
-    "Tottenham": ("spurs", "tottenxem", "тоттенхэм"),
-    "Newcastle": ("nyukasl",),
-    # Ispaniya
-    "Real Madrid": ("real", "realmadrid", "реал", "реал мадрид"),
-    "Barcelona": ("barca", "barsa", "barselona", "fc barcelona", "барселона"),
-    "Atletico Madrid": ("atletico", "atletiko", "atletiko madrid", "атлетико"),
-    # Italiya, Germaniya, Fransiya
-    "Juventus": ("yuventus", "ювентус"),
-    "Inter": ("inter milan", "internazionale", "интер"),
-    "Milan": ("ac milan", "милан"),
+    "Manchester Yunayted": ("манчестер юнайтед",),
+    "Manchester Siti": ("манчестер сити",),
+    "Bavariya": ("бавария",),
+    "PSJ": ("псж",),
+    "Yuventus": ("ювентус",),
+    "Inter": ("интер",),
+    "Milan": ("милан",),
     "Napoli": ("наполи",),
-    "Bayern Myunxen": ("bayern", "bayern munich", "bayern munchen", "бавария"),
-    "Borussia Dortmund": ("borussia", "dortmund", "боруссия"),
-    "PSG": ("paris saint germain", "psj", "paris sen jermen", "псж"),
-    # Turnirlar
-    "Chempionlar ligasi": ("champions league", "ucl", "cl", "chempionlarligasi", "лига чемпионов"),
+    # Qisqartmalar — lug'atda yo'q
+    "Chempionlar ligasi": ("ucl", "cl", "лига чемпионов"),
     "Yevropa ligasi": ("europa league", "uel"),
-    "Premyer-liga": ("premier league", "apl", "angliya premyer ligasi", "epl", "премьер лига"),
-    "La Liga": ("laliga", "ispaniya chempionati", "ла лига"),
-    "Seriya A": ("serie a", "italiya chempionati", "серия а"),
-    "Bundesliga": ("germaniya chempionati", "бундеслига"),
+    "Premyer-liga": ("apl", "epl", "angliya premyer ligasi", "премьер лига"),
     "Jahon chempionati": ("world cup", "jch", "jahon kubogi", "чемпионат мира"),
     "Yevro": ("euro", "yevropa chempionati"),
+    "FIFA": (),
+    "UEFA": (),
+    "VAR": (),
+    "EFL": (),
     # Mavzular
     "Transfer": ("transferlar", "transfer bozori", "трансфер"),
     "Jarohat": ("jarohatlar", "shikast", "травма"),
@@ -57,7 +58,7 @@ _ALIAS_GROUPS: dict[str, tuple[str, ...]] = {
         "ozbekiston termasi", "terma jamoa", "ozbekiston milliy termasi",
         "uzbekistan", "сборная узбекистана",
     ),
-    "O'zbekiston futboli": ("ozbekiston chempionati", "superliga", "pfl"),
+    "O'zbekiston futboli": ("ozbekiston chempionati", "pfl"),
     "Legionerlar": ("legioner", "ozbek legionerlari"),
 }
 
@@ -102,10 +103,17 @@ def _stable_case(tag: str) -> str:
 
 
 def canonical_tag(tag: str) -> str:
-    """Bitta tegning saytda ko'rinadigan yagona yozuvi. Bo'sh teg uchun ''."""
+    """Bitta tegning saytda ko'rinadigan yagona yozuvi. Bo'sh teg uchun ''.
+
+    Avval maqola matni bilan bir xil lug'at qo'llanadi (`canonicalize_names`),
+    shuning uchun teg va matn hech qachon qarama-qarshi bo'lmaydi. Undan
+    keyingina lug'at qamramaydigan variantlar (kirill, qisqartma, mavzu)
+    tekshiriladi.
+    """
     cleaned = _clean(tag)
     if not cleaned:
         return ""
+    cleaned = _clean(canonicalize_names(cleaned))
     return _ALIASES.get(tag_key(cleaned)) or _stable_case(cleaned)
 
 

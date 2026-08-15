@@ -14,22 +14,41 @@ class TagKeyTests(unittest.TestCase):
 
 
 class CanonicalTagTests(unittest.TestCase):
-    def test_club_spellings_collapse_to_one(self):
-        for variant in ("barca", "Barsa", "BARSELONA", "FC Barcelona"):
-            self.assertEqual(canonical_tag(variant), "Barcelona")
+    def test_club_tags_follow_the_site_glossary(self):
+        """Teg maqola matni bilan bir xil yozuvda bo'lsin: Chelsea -> Chelsi."""
+        self.assertEqual(canonical_tag("Chelsea"), "Chelsi")
+        self.assertEqual(canonical_tag("Liverpool"), "Liverpul")
+        self.assertEqual(canonical_tag("Barcelona"), "Barselona")
+        self.assertEqual(canonical_tag("PSG"), "PSJ")
+        self.assertEqual(canonical_tag("Bayern Munich"), "Bavariya")
 
-    def test_cyrillic_club_names_map_to_latin(self):
+    def test_player_names_follow_the_glossary_too(self):
+        self.assertEqual(canonical_tag("Abdukodir Khusanov"), "Abduqodir Husanov")
+        self.assertEqual(canonical_tag("Erling Haaland"), "Erling Xoland")
+
+    def test_cyrillic_names_reach_the_same_spelling(self):
+        self.assertEqual(canonical_tag("Челси"), "Chelsi")
         self.assertEqual(canonical_tag("Реал"), "Real Madrid")
-        self.assertEqual(canonical_tag("Манчестер Юнайтед"), "Manchester United")
+        self.assertEqual(canonical_tag("Манчестер Юнайтед"), "Manchester Yunayted")
 
     def test_competition_aliases(self):
         self.assertEqual(canonical_tag("Champions League"), "Chempionlar ligasi")
         self.assertEqual(canonical_tag("UCL"), "Chempionlar ligasi")
         self.assertEqual(canonical_tag("APL"), "Premyer-liga")
+        self.assertEqual(canonical_tag("la liga"), "La Liga")
 
-    def test_player_names_keep_their_spelling(self):
-        self.assertEqual(canonical_tag("Abduqodir Husanov"), "Abduqodir Husanov")
-        self.assertEqual(canonical_tag("PSG"), "PSG")
+    def test_acronyms_keep_their_capitals(self):
+        self.assertEqual(canonical_tag("fifa"), "FIFA")
+        self.assertEqual(canonical_tag("uefa"), "UEFA")
+
+    def test_infantino_has_one_spelling(self):
+        """Prodda "Janni Infantino" va "Gianni infantino" ikkiga bo'linib turgan edi."""
+        self.assertEqual(canonical_tag("Gianni Infantino"), "Janni Infantino")
+        self.assertEqual(canonical_tag("gianni infantino"), "Janni Infantino")
+
+    def test_unknown_names_keep_their_spelling(self):
+        """Lug'atda yo'q ism kichik harfga tushib qolmasin."""
+        self.assertEqual(canonical_tag("Denni Velbek"), "Denni Velbek")
 
     def test_lowercase_tag_gets_a_capital(self):
         self.assertEqual(canonical_tag("yosh futbolchilar"), "Yosh futbolchilar")
@@ -49,12 +68,12 @@ class CanonicalTagTests(unittest.TestCase):
 class NormalizeTagsTests(unittest.TestCase):
     def test_duplicates_within_one_article_are_removed(self):
         self.assertEqual(
-            normalize_tags(["Barsa", "barcelona", "Real", "REAL MADRID"]),
-            ["Barcelona", "Real Madrid"],
+            normalize_tags(["Barcelona", "Barselona", "Real Madrid", "Real-Madrid"]),
+            ["Barselona", "Real Madrid"],
         )
 
     def test_limit_applies_after_deduplication(self):
-        tags = ["Barsa", "Barcelona", "a", "b", "c", "d", "e", "f"]
+        tags = ["Barcelona", "Barselona", "a", "b", "c", "d", "e", "f"]
         self.assertEqual(len(normalize_tags(tags, limit=6)), 6)
 
     def test_empty_input_is_safe(self):
@@ -74,13 +93,15 @@ class AnalysisIntegrationTests(unittest.TestCase):
             "xulosa": "Sinov xulosasi",
             "maqola": "Sinov matni",
             "amaliy_ahamiyat": "Sinov",
-            "teglar": ["barca", "Barsa", "champions league"],
+            "teglar": ["Barcelona", "Barselona", "champions league", "transferlar"],
             "entities": [],
             "facts": [],
             "event_key": "sinov",
         })
 
-        self.assertEqual(analysis["teglar"], ["Barcelona", "Chempionlar ligasi"])
+        self.assertEqual(
+            analysis["teglar"], ["Barselona", "Chempionlar ligasi", "Transfer"]
+        )
 
 
 class SchemaOrderTests(unittest.TestCase):
