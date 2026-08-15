@@ -1,6 +1,13 @@
+import os
 import unittest
 
-from app.pipeline import LAST_RUN, format_error, redact_secrets
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+os.environ.setdefault("DATABASE_URL", "sqlite://")
+
+from app.pipeline import LAST_RUN, format_error, redact_secrets  # noqa: E402
 
 
 class SecretRedactionTests(unittest.TestCase):
@@ -49,6 +56,48 @@ class LastRunShapeTests(unittest.TestCase):
             "ai_errors", "needs_review", "telegram_sent", "skipped_locked",
         ):
             self.assertIn(key, LAST_RUN)
+
+
+class HealthResponseTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from app import database
+
+        cls.previous_bind = database.SessionLocal.kw.get("bind")
+        cls.engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        database.Base.metadata.create_all(cls.engine)
+        database.SessionLocal.configure(bind=cls.engine)
+        cls.database = database
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.database.SessionLocal.configure(bind=cls.previous_bind)
+
+    def test_health_reports_the_effective_thresholds(self):
+        """Render environment kod standartini bekor qilsa, shu yerda ko'rinadi."""
+        from app.main import health
+
+        body = health()
+
+        self.assertEqual(body["status"], "ok")
+        self.assertEqual(body["database"], "ok")
+        for key in (
+            "auto_publish", "auto_publish_min_importance",
+            "auto_telegram", "auto_telegram_min_importance",
+        ):
+            self.assertIn(key, body["publish"])
+
+    def test_health_carries_the_pipeline_state(self):
+        from app.main import health
+
+        pipeline = health()["pipeline"]
+
+        self.assertIn("status", pipeline)
+        self.assertIn("model", pipeline["last_run"])
 
 
 if __name__ == "__main__":

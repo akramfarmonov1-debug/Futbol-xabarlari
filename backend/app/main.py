@@ -9,7 +9,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .config import DAILY_DIGEST, FRONTEND_ORIGIN, MEDIA_DIR
+from .config import (
+    AUTO_PUBLISH,
+    AUTO_PUBLISH_MIN_IMPORTANCE,
+    AUTO_TELEGRAM,
+    AUTO_TELEGRAM_MIN_IMPORTANCE,
+    DAILY_DIGEST,
+    FRONTEND_ORIGIN,
+    MEDIA_DIR,
+)
 from .database import Base, SessionLocal, engine, ensure_schema
 from .models import Article
 from .routers import admin, categories, legionnaires, news, push, scores
@@ -162,6 +170,14 @@ def health():
             "status": "ok",
             "database": "ok",
             "latest_article_at": latest.created_at if latest else None,
+            # Amaldagi chegaralar ham shu yerda: server environment koddagi
+            # standartni bekor qilsa, buni taxmin qilib emas, ko'rib bilamiz.
+            "publish": {
+                "auto_publish": AUTO_PUBLISH,
+                "auto_publish_min_importance": AUTO_PUBLISH_MIN_IMPORTANCE,
+                "auto_telegram": AUTO_TELEGRAM,
+                "auto_telegram_min_importance": AUTO_TELEGRAM_MIN_IMPORTANCE,
+            },
             "pipeline": {**PIPELINE_STATE, "last_run": LAST_RUN},
         }
     finally:
