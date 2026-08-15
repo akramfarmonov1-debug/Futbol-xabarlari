@@ -24,12 +24,16 @@ jobs:
         run: |
           set -euo pipefail
 
-          endpoint="https://futbol-xabar-backend.onrender.com/"
+          # /health tekshiradi: ilova javob berayaptimi VA bazaga ula
+          # olayaptimi. Ilgari bu yerda "/" turardi — u baza yiqilgan
+          # holatda ham 200 qaytaradi, ya'ni nosozlik sezilmasdan qolardi.
+          endpoint="https://futbol-xabar-backend.onrender.com/health"
 
           for attempt in 1 2 3; do
             body="$(curl --silent --show-error --fail --max-time 75 "$endpoint" || true)"
-            if [[ "$body" == *'"loyiha":"Futbol Xabar"'* ]]; then
+            if [[ "$body" == *'"database":"ok"'* ]]; then
               echo "Backend is ready (attempt $attempt)."
+              echo "$body"
               exit 0
             fi
 
@@ -38,4 +42,5 @@ jobs:
           done
 
           echo "Backend did not become ready in time." >&2
+          echo "Last response: ${body:-<bo'sh>}" >&2
           exit 1
