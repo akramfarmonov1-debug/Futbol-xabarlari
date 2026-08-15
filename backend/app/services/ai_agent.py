@@ -36,7 +36,25 @@ SYSTEM_PROMPT = """**Rol:** Sen jahon futboli bo'yicha yetakchi, tajribali o'zbe
 5. **Muxlis uchun ma'no:** "amaliy_ahamiyat" maydonida bu voqea nima sababdan muhimligini faqat mavjud ma'lumotlar doirasida 1-2 jumlada tushuntir.
 6. **Jozibador sarlavha:** "sarlavha" maydonida xabarning tub mohiyatini aks ettiruvchi professional sarlavha yoz (60-90 belgi). Clickbait va arzon shov-shuv ishlatma.
 7. **SEO sarlavha:** "seo_sarlavha" maydonida qidiruv tizimlari uchun kalit so'zlarga boy sarlavha yoz (50-70 belgi).
-8. **Baholash:** "ahamiyati" maydonida 1 dan 5 gacha baho ber (5 = top transfer/final/rekord; 1-2 = kundalik kichik xabar).
+8. **Baholash:** Avval "baho_sababi" maydonida bir jumlada xabar qaysi daraja ta'rifiga mos
+   kelishini ayt, so'ng "ahamiyati" maydonida 1 dan 5 gacha butun son ber. Shkala mutlaq:
+   xabarni o'z ichida emas, bir mavsumdagi butun futbol oqimi bilan solishtir.
+   - 5 — mavsumda bir necha marta: JCH yoki Chempionlar ligasi finali natijasi, rekord
+     darajadagi transfer, super-yulduzning klub almashtirishi, terma jamoaning tarixiy natijasi
+   - 4 — oyning voqeasi: yirik klubning yakunlangan transferi, top-liga yoki Chempionlar
+     ligasidagi hal qiluvchi o'yin natijasi, mashhur murabbiyning ketishi yoki tayinlanishi,
+     klub egaligidagi katta o'zgarish
+   - 3 — haftaning odatiy xabari: top-ligadagi tur natijasi, asosiy futbolchining jiddiy
+     jarohati, shartnoma uzaytirilishi, e'tiborga loyiq intervyu
+   - 2 — kundalik oqim: transfer mish-mishi va "qiziqmoqda" turidagi xabarlar, matbuot
+     anjumanidagi gaplar, kichik jarohat, quyi divizion natijalari, muallif ustuni va
+     fikr-mulohaza maqolalari
+   - 1 — ahamiyatsiz: futbolga aloqasiz sport xabari, ijtimoiy tarmoq posti, shaxsiy hayot,
+     reklama, oldingi xabarning takrori
+   Kunlik oqimning ko'pchiligi 2-3 darajaga tushadi — bu normal. Ikkilansang pastrog'ini tanla.
+   **O'zbek o'quvchisi uchun tuzatish:** O'zbekiston terma jamoasi, O'zbekiston klublari va
+   chet elda o'ynayotgan o'zbek legionerlari haqidagi xabarga bir daraja yuqori baho qo'y —
+   sayt auditoriyasi uchun ular jahon futbolining o'rtacha xabaridan muhimroq.
 9. **Teglar va Kategoriya:** "teglar" da 3-5 ta aniq nom, "kategoriya" da qat'iy ro'yxatdan mos slugni tanla.
 10. **Tuzilma va Dalillar:** Javobni qat'iy JSON formatida qaytar. "facts" dagi har bir fakt uchun "evidence" maydoniga manbadan aynan mos dalilni keltir."""
 
@@ -75,15 +93,42 @@ ANALYSIS_SCHEMA = {
         "football_confidence": {"type": "integer"},
         "category_confidence": {"type": "integer"},
         "fact_confidence": {"type": "integer"},
+        "baho_sababi": {"type": "string"},
     },
     "required": [
         "kategoriya", "sarlavha", "seo_sarlavha", "xulosa",
         "maqola", "amaliy_ahamiyat", "teglar", "ahamiyati",
         "entities", "facts", "event_key", "football_confidence",
-        "category_confidence", "fact_confidence",
+        "category_confidence", "fact_confidence", "baho_sababi",
     ],
     "additionalProperties": False,
 }
+
+# Model maydonlarni shu ketma-ketlikda yozadi. Tartib ataylab tanlangan:
+# avval manbadan faktlar dalili bilan ajratiladi, keyin maqola shu faktlar
+# ustiga yoziladi, baho esa eng oxirida — maqola va uning asosi tayyor
+# bo'lgandan keyin, "baho_sababi" bilan asoslanib qo'yiladi.
+# `baho_sababi` bazaga saqlanmaydi; u faqat modelni raqamdan oldin o'ylashga
+# majburlaydi.
+_FIELD_ORDER = [
+    "kategoriya", "entities", "facts", "event_key",
+    "sarlavha", "seo_sarlavha", "xulosa", "maqola", "amaliy_ahamiyat", "teglar",
+    "football_confidence", "category_confidence", "fact_confidence",
+    "baho_sababi", "ahamiyati",
+]
+
+
+def _google_schema() -> dict:
+    """Gemini va Vertex uchun schema.
+
+    `propertyOrdering` bo'lmasa Google modellari maydonlarni o'z bilganicha
+    (ko'pincha alifbo tartibida) yozadi — unda "ahamiyati" eng birinchi
+    chiqadi va baho maqola yozilishidan ham, faktlar ajratilishidan ham
+    oldin qo'yiladi.
+    """
+    schema = {k: v for k, v in ANALYSIS_SCHEMA.items() if k != "additionalProperties"}
+    schema["propertyOrdering"] = _FIELD_ORDER
+    return schema
 
 
 def _validate(analysis: dict) -> dict:
@@ -106,7 +151,7 @@ def _analyze_with_gemini(user_text: str) -> dict:
         raise RuntimeError("GEMINI_API_KEY sozlanmagan")
 
     # Gemini responseSchema OpenAPI kichik to'plami — additionalProperties kerak emas
-    schema = {k: v for k, v in ANALYSIS_SCHEMA.items() if k != "additionalProperties"}
+    schema = _google_schema()
 
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -171,7 +216,7 @@ def _analyze_with_vertex(user_text: str) -> dict:
     if not _vertex_credentials.valid:
         _vertex_credentials.refresh(Request())
 
-    schema = {k: v for k, v in ANALYSIS_SCHEMA.items() if k != "additionalProperties"}
+    schema = _google_schema()
     models_to_try = [VERTEX_GEMINI_MODEL]
     if VERTEX_GEMINI_MODEL != "gemini-2.5-flash":
         models_to_try.append("gemini-2.5-flash")

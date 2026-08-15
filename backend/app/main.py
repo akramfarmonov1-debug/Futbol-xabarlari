@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import DAILY_DIGEST, FRONTEND_ORIGIN, MEDIA_DIR
 from .database import Base, SessionLocal, engine, ensure_schema
 from .routers import admin, categories, legionnaires, news, push, scores
+from .backfill import backfill_tags
 from .seed import seed_categories
 from .pipeline import run_pipeline
 from .bot.bot import main as run_bot
@@ -57,6 +58,9 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_categories(db)
+        renamed = backfill_tags(db)
+        if renamed:
+            print(f"Teglar kanonik ko'rinishga keltirildi: {renamed} ta xabar.")
     finally:
         db.close()
     

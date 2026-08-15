@@ -1,5 +1,5 @@
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from ..database import get_db
 from ..models import Article, Category
 from ..schemas import ArticleOut, SitemapArticleOut
+from ..tags import canonical_tag, tag_key
 
 router = APIRouter(prefix="/api/news", tags=["news"])
 
@@ -71,11 +72,29 @@ def daily_digest(db: Session = Depends(get_db)):
 
 @router.get("/trends")
 def trend_topics(db: Session = Depends(get_db), kunlar: int = 7, limit: int = 15):
-    """Trend mavzular — so'nggi kunlardagi eng ko'p uchragan teglar."""
+    """Trend mavzular — so'nggi kunlardagi eng ko'p uchragan teglar.
+
+    Teglar kanonik yozuvi bo'yicha guruhlanadi, shuning uchun eski
+    xabarlardagi "Barsa" yozuvi "Barcelona" bilan bitta mavzu bo'lib sanaladi.
+    """
     since = datetime.utcnow() - timedelta(days=kunlar)
     articles = published(db).filter(Article.published_at >= since).all()
-    counter = Counter(tag for a in articles for tag in (a.tags or []))
-    return [{"teg": tag, "soni": count} for tag, count in counter.most_common(limit)]
+
+    totals: Counter = Counter()
+    spellings: dict[str, Counter] = defaultdict(Counter)
+    for article in articles:
+        for tag in article.tags or []:
+            canonical = canonical_tag(tag)
+            if not canonical:
+                continue
+            key = tag_key(canonical)
+            totals[key] += 1
+            spellings[key][canonical] += 1
+
+    return [
+        {"teg": spellings[key].most_common(1)[0][0], "soni": count}
+        for key, count in totals.most_common(limit)
+    ]
 
 
 @router.get("/sitemap", response_model=list[SitemapArticleOut])

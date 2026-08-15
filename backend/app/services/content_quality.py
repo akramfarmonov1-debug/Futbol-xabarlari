@@ -19,6 +19,7 @@ from ..config import (
     MIN_FOOTBALL_CONFIDENCE,
 )
 from .names_glossary import canonicalize_names
+from ..tags import normalize_tags
 
 
 FOOTBALL_TERMS = re.compile(
@@ -108,11 +109,11 @@ def normalize_analysis(analysis: dict) -> dict:
         "amaliy_ahamiyat",
     ):
         analysis[key] = normalize_text(analysis.get(key))
-    analysis["teglar"] = [
-        normalize_text(tag)
-        for tag in (analysis.get("teglar") or [])
-        if normalize_text(tag)
-    ][:6]
+    # Teglar sayt bo'ylab yagona yozuvga keltiriladi, aks holda "Barsa",
+    # "Barselona" va "Barcelona" uchta alohida mavzu bo'lib ko'rinadi.
+    analysis["teglar"] = normalize_tags(
+        normalize_text(tag) for tag in (analysis.get("teglar") or [])
+    )
     analysis["entities"] = [
         normalize_text(entity)
         for entity in (analysis.get("entities") or [])
