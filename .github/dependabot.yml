@@ -1,0 +1,59 @@
+# Dependabot oyiga bir marta yangilanishlar uchun PR ochadi. Har bir PR'ni
+# .github/workflows/tests.yml tekshiradi — yashil bo'lmaguncha merge qilmang:
+# main'ga tushgan har bir commit Render'da darhol deploy bo'ladi.
+version: 2
+updates:
+  # Python: requirements.in (qo'lda) → requirements.txt (uv pip compile bilan
+  # qotirilgan). Faqat requirements.in'dagi paketlar yangilanadi: Dependabot
+  # qotirilgan ro'yxatdagi ichki paketni alohida ko'tarib, mos kelmaydigan
+  # juftlik taklif qilishi mumkin (masalan, pydantic-core'ni pydantic'siz).
+  # Shunday PR baribir testlarda "pip install" bosqichida yiqiladi.
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "monthly"
+    allow:
+      - dependency-type: "direct"
+    groups:
+      backend:
+        patterns: ["*"]
+    commit-message:
+      prefix: "build"
+      include: "scope"
+
+  - package-ecosystem: "pip"
+    directory: "/bot"
+    schedule:
+      interval: "monthly"
+    allow:
+      - dependency-type: "direct"
+    groups:
+      bot:
+        patterns: ["*"]
+    commit-message:
+      prefix: "build"
+      include: "scope"
+
+  # Kichik va patch yangilanishlar bitta PR'da; major (masalan Next.js 16)
+  # alohida keladi — ular ko'rib chiqishni talab qiladi.
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "monthly"
+    groups:
+      frontend:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "build"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
