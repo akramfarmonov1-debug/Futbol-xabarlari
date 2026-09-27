@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import ArticleCard from "../components/ArticleCard";
 import AdPlaceholder from "../components/AdPlaceholder";
+import ApiUnavailable from "../components/ApiUnavailable";
 import LiveScores from "../components/LiveScores";
 import LegionnairesWidget from "../components/LegionnairesWidget";
 import { apiGet } from "../lib/api";
@@ -104,7 +105,9 @@ export default async function HomePage() {
             </h2>
           </div>
 
-          {hasContent ? (
+          {latest === null ? (
+            <ApiUnavailable />
+          ) : hasContent ? (
             <div className="grid gap-6 sm:grid-cols-2">
               {remainingArticles.map((article) => (
                 <ArticleCard key={article.id} article={article} />

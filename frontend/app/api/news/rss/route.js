@@ -1,4 +1,4 @@
-import { API_URL } from "../../../../lib/api";
+import { API_TIMEOUT_MS, API_URL } from "../../../../lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -6,6 +6,7 @@ export async function GET() {
   try {
     const response = await fetch(`${API_URL}/api/news/rss`, {
       cache: "no-store",
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
       headers: {
         Accept: "application/rss+xml, application/xml;q=0.9",
       },

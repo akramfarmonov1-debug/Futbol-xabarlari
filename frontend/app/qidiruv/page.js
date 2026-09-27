@@ -1,3 +1,4 @@
+import ApiUnavailable from "../../components/ApiUnavailable";
 import ArticleCard from "../../components/ArticleCard";
 import { apiGet } from "../../lib/api";
 
@@ -27,7 +28,9 @@ export default async function SearchPage({ searchParams }) {
         <div className="rounded-2xl border border-slate-900 bg-slate-950/20 p-10 text-center text-slate-500">
           Yuqoridagi qidiruv maydonidan foydalanib kalit so&apos;zni kiriting.
         </div>
-      ) : (articles || []).length > 0 ? (
+      ) : articles === null ? (
+        <ApiUnavailable />
+      ) : articles.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {articles.map((article) => (
             <ArticleCard key={article.id} article={article} />

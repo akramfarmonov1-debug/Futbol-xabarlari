@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ApiUnavailable from "../../components/ApiUnavailable";
 import ArticleCard from "../../components/ArticleCard";
 import { apiGet } from "../../lib/api";
 import { SITE_NAME, SITE_URL } from "../../lib/site";
@@ -18,7 +19,8 @@ export const metadata = {
 };
 
 export default async function LegionnairesPage() {
-  const legionnaires = (await apiGet("/api/legionnaires")) || [];
+  const data = await apiGet("/api/legionnaires");
+  const legionnaires = data || [];
 
   return (
     <div className="py-6 sm:py-10">
@@ -39,7 +41,7 @@ export default async function LegionnairesPage() {
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-center">
             <span className="block text-2xl font-black text-sky-400">
-              {legionnaires.length}
+              {data === null ? "—" : legionnaires.length}
             </span>
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               Asosiy Legionerlar
@@ -47,6 +49,8 @@ export default async function LegionnairesPage() {
           </div>
         </div>
       </div>
+
+      {data === null && <ApiUnavailable />}
 
       {/* Legionnaires Grid */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import ApiUnavailable from "../../components/ApiUnavailable";
 import { apiGet } from "../../lib/api";
 
 export const metadata = {
@@ -129,18 +130,22 @@ function TeamIdentity({ row }) {
 }
 
 export default async function StandingsPage({ searchParams }) {
-  const competitions = (await apiGet("/api/scores/competitions")) || [];
+  const competitions = await apiGet("/api/scores/competitions");
 
-  if (competitions.length === 0) {
+  if (!competitions?.length) {
     return (
       <div className="py-24 text-center text-slate-400">
         <h1 className="mb-3 text-2xl font-extrabold text-white">
           Turnir jadvallari
         </h1>
-        <p className="text-xs">
-          Jadval ma&apos;lumotlari hozircha mavjud emas. Tez orada
-          qo&apos;shiladi.
-        </p>
+        {competitions === null ? (
+          <ApiUnavailable />
+        ) : (
+          <p className="text-xs">
+            Jadval ma&apos;lumotlari hozircha mavjud emas. Tez orada
+            qo&apos;shiladi.
+          </p>
+        )}
       </div>
     );
   }

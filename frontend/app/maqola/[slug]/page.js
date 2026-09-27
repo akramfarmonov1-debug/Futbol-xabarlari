@@ -4,12 +4,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdPlaceholder from "../../../components/AdPlaceholder";
 import CopyLinkButton from "../../../components/CopyLinkButton";
-import { apiGet } from "../../../lib/api";
+import { apiGet, apiGetOrThrow } from "../../../lib/api";
 import { formatUzDate, formatUzDateTime } from "../../../lib/date";
 import { truncateSeoText } from "../../../lib/seo";
 import { SITE_URL, SITE_NAME } from "../../../lib/site";
 
-const getArticle = cache((slug) => apiGet(`/api/news/${slug}`));
+// Backend javob bermasa xato tashlanadi (error.js), "topilmadi" emas: aks holda
+// uzilish paytida har bir maqola noindex 404 bo'lib, Google'dan tushib ketadi.
+const getArticle = cache((slug) => apiGetOrThrow(`/api/news/${slug}`));
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
