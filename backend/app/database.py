@@ -3,7 +3,13 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from .config import DATABASE_URL
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+# Postgres javob bermasa ulanish osilib qolmasin: psycopg2'da standart timeout
+# yo'q, u holda ilova start paytida ham, /health ham daqiqalab kutib qoladi.
+connect_args = (
+    {"check_same_thread": False}
+    if DATABASE_URL.startswith("sqlite")
+    else {"connect_timeout": 10}
+)
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,

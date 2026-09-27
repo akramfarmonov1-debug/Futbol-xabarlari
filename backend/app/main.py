@@ -6,8 +6,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import SQLAlchemyError
 
 from .config import (
     AUTO_PUBLISH,
@@ -35,6 +38,16 @@ PIPELINE_STATE = {
     "last_error": None,
     "last_saved": None,
 }
+
+# Baza start paytida yiqilgan bo'lsa ham ilova ko'tariladi — nima bo'lgani
+# shu yerda turadi va /health orqali ko'rinadi.
+DATABASE_STATE = {
+    "status": "not_started",
+    "ready_at": None,
+    "last_error_at": None,
+    "last_error": None,
+}
+DB_RETRY_INTERVAL = 60  # soniya
 
 
 async def pipeline_loop_task():
@@ -80,8 +93,7 @@ async def digest_task():
         print(f"❌ Daily Digest loop error: {e}")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+def init_database() -> None:
     Base.metadata.create_all(engine)
     ensure_schema()
     db = SessionLocal()
@@ -92,23 +104,57 @@ async def lifespan(app: FastAPI):
             print(f"Teglar kanonik ko'rinishga keltirildi: {renamed} ta xabar.")
     finally:
         db.close()
-    
-    bg_tasks = []
-    
-    # Start pipeline
+
+
+def try_init_database() -> bool:
+    try:
+        init_database()
+    except SQLAlchemyError as e:
+        DATABASE_STATE["status"] = "error"
+        DATABASE_STATE["last_error_at"] = datetime.now(timezone.utc).isoformat()
+        DATABASE_STATE["last_error"] = format_error(e)
+        print(f"❌ Bazaga ulanib bo'lmadi: {DATABASE_STATE['last_error']}")
+        return False
+    DATABASE_STATE["status"] = "ok"
+    DATABASE_STATE["ready_at"] = datetime.now(timezone.utc).isoformat()
+    return True
+
+
+def start_background_tasks(bg_tasks: list) -> None:
     bg_tasks.append(asyncio.create_task(pipeline_loop_task()))
-    
-    # Start bot if token exists
+
     if os.getenv("TELEGRAM_BOT_TOKEN"):
         bg_tasks.append(asyncio.create_task(bot_task()))
     else:
         print("[INFO] TELEGRAM_BOT_TOKEN is not set. Bot background task will not start.")
 
-    # Start daily digest if enabled
     if DAILY_DIGEST:
         bg_tasks.append(asyncio.create_task(digest_task()))
     else:
         print("[INFO] DAILY_DIGEST is not enabled. Daily digest task will not start.")
+
+
+async def database_retry_task(bg_tasks: list) -> None:
+    loop = asyncio.get_running_loop()
+    while True:
+        await asyncio.sleep(DB_RETRY_INTERVAL)
+        if await loop.run_in_executor(None, try_init_database):
+            print("✅ Baza qayta ulandi; fon vazifalari ishga tushirilmoqda.")
+            start_background_tasks(bg_tasks)
+            return
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    bg_tasks = []
+    if try_init_database():
+        start_background_tasks(bg_tasks)
+    else:
+        # Ilova baribir ko'tarilsin: aks holda Render'da servis butunlay
+        # g'oyib bo'ladi (so'rovlar osilib qoladi) va /health sababini ayta
+        # olmaydi. Pipeline, bot va digest bazasiz ishlamaydi — baza qaytgach
+        # o'zi ishga tushadi.
+        bg_tasks.append(asyncio.create_task(database_retry_task(bg_tasks)))
 
     yield
     
@@ -163,22 +209,30 @@ def health():
     beriladi, aks holda service-account kaliti tashqariga chiqib ketishi
     mumkin.
     """
+    body = {
+        "status": "ok",
+        "database": "ok",
+        "latest_article_at": None,
+        # Amaldagi chegaralar ham shu yerda: server environment koddagi
+        # standartni bekor qilsa, buni taxmin qilib emas, ko'rib bilamiz.
+        "publish": {
+            "auto_publish": AUTO_PUBLISH,
+            "auto_publish_min_importance": AUTO_PUBLISH_MIN_IMPORTANCE,
+            "auto_telegram": AUTO_TELEGRAM,
+            "auto_telegram_min_importance": AUTO_TELEGRAM_MIN_IMPORTANCE,
+        },
+        "pipeline": {**PIPELINE_STATE, "last_run": LAST_RUN},
+        "database_init": dict(DATABASE_STATE),
+    }
     db = SessionLocal()
     try:
         latest = db.query(Article).order_by(Article.created_at.desc()).first()
-        return {
-            "status": "ok",
-            "database": "ok",
-            "latest_article_at": latest.created_at if latest else None,
-            # Amaldagi chegaralar ham shu yerda: server environment koddagi
-            # standartni bekor qilsa, buni taxmin qilib emas, ko'rib bilamiz.
-            "publish": {
-                "auto_publish": AUTO_PUBLISH,
-                "auto_publish_min_importance": AUTO_PUBLISH_MIN_IMPORTANCE,
-                "auto_telegram": AUTO_TELEGRAM,
-                "auto_telegram_min_importance": AUTO_TELEGRAM_MIN_IMPORTANCE,
-            },
-            "pipeline": {**PIPELINE_STATE, "last_run": LAST_RUN},
-        }
+    except SQLAlchemyError as e:
+        # 503 — monitoring nosozlikni sezadi; sababi esa javobning o'zida,
+        # Render log'ini ochmasdan ham nima yiqilgani ko'rinadi.
+        body.update(status="error", database="error", database_error=format_error(e))
+        return JSONResponse(status_code=503, content=jsonable_encoder(body))
     finally:
         db.close()
+    body["latest_article_at"] = latest.created_at if latest else None
+    return body

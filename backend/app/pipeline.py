@@ -79,6 +79,7 @@ _SECRET_MARKERS = ('"private_key"', "-----BEGIN", "PRIVATE KEY")
 _SECRET_PATTERNS = [
     re.compile(r"\b(?:gho_|ghp_|github_pat_|sk-ant-|sk-|AIza)[A-Za-z0-9_\-]{8,}"),
     re.compile(r"\b\d{8,10}:[A-Za-z0-9_\-]{30,}"),  # Telegram bot tokeni
+    re.compile(r"(?<=://)[^/\s:@]+:[^/\s@]+(?=@)"),  # ulanish URL'idagi login:parol
 ]
 
 
