@@ -1,4 +1,4 @@
-name: Keep Render backend awake
+name: Monitor backend and site
 
 on:
   schedule:
@@ -6,9 +6,17 @@ on:
     # background pipeline va Telegram bot jarayonlarini faol saqlaydi.
     - cron: "7,17,27,37,47,57 * * * *"
   workflow_dispatch:
+    inputs:
+      test_alert:
+        description: "Holat o'zgarmagan bo'lsa ham Telegram'ga yuborish (sozlamani sinash uchun)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  # Oldingi run natijasini o'qish uchun: ogohlantirish har safar emas, faqat
+  # holat o'zgarganda (ishlayapti → yiqildi → tiklandi) yuboriladi.
+  actions: read
 
 concurrency:
   group: keep-render-backend-awake
@@ -17,30 +25,59 @@ concurrency:
 jobs:
   wake:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    # monitor.sh eng yomon holatda ~4.5 daqiqa ishlaydi. Timeout undan qisqa
+    # bo'lsa GitHub job'ni "cancelled" qiladi va sabab logga chiqmaydi.
+    timeout-minutes: 7
     steps:
-      - name: Wake backend and wait until it is ready
+      - uses: actions/checkout@v7
+
+      - name: Check backend and site
+        id: check
         shell: bash
+        run: bash .github/scripts/monitor.sh | tee "$RUNNER_TEMP/report.txt"
+
+      - name: Alert on Telegram when the state changes
+        if: always() && (steps.check.outcome == 'success' || steps.check.outcome == 'failure')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BOT_TOKEN: ${{ secrets.ALERT_TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.ALERT_TELEGRAM_CHAT_ID }}
+          OUTCOME: ${{ steps.check.outcome }}
+          FORCE: ${{ inputs.test_alert == true }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          set -euo pipefail
+          if [[ -z "$BOT_TOKEN" || -z "$CHAT_ID" ]]; then
+            echo "::notice::ALERT_TELEGRAM_BOT_TOKEN / ALERT_TELEGRAM_CHAT_ID sozlanmagan — Telegram ogohlantirishi o'chiq."
+            exit 0
+          fi
 
-          # /health tekshiradi: ilova javob berayaptimi VA bazaga ula
-          # olayaptimi. Ilgari bu yerda "/" turardi — u baza yiqilgan
-          # holatda ham 200 qaytaradi, ya'ni nosozlik sezilmasdan qolardi.
-          endpoint="https://futbol-xabar-backend.onrender.com/health"
+          # Oxirgi yakunlangan tekshiruv; cancelled/skipped hisobga olinmaydi.
+          workflow_file="$(basename "${GITHUB_WORKFLOW_REF%%@*}")"
+          previous="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow_file" \
+            --status completed --limit 20 --json conclusion \
+            --jq '[.[] | select(.conclusion == "success" or .conclusion == "failure")][0].conclusion // "unknown"')"
 
-          for attempt in 1 2 3; do
-            body="$(curl --silent --show-error --fail --max-time 75 "$endpoint" || true)"
-            if [[ "$body" == *'"database":"ok"'* ]]; then
-              echo "Backend is ready (attempt $attempt)."
-              echo "$body"
-              exit 0
-            fi
+          if [[ "$FORCE" != "true" && "$OUTCOME" == "$previous" ]]; then
+            echo "Holat o'zgarmadi ($OUTCOME) — xabar yuborilmaydi."
+            exit 0
+          fi
 
-            echo "Backend is waking up (attempt $attempt)."
-            sleep 15
-          done
+          if [[ "$OUTCOME" == "failure" ]]; then
+            title="🔴 Futbol Xabar: nosozlik"
+          else
+            title="🟢 Futbol Xabar: hammasi ishlayapti"
+          fi
+          text="$(printf '%s\n\n%s\n\n%s' "$title" "$(cat "$RUNNER_TEMP/report.txt")" "$RUN_URL")"
 
-          echo "Backend did not become ready in time." >&2
-          echo "Last response: ${body:-<bo'sh>}" >&2
-          exit 1
+          # Xato bo'lsa job'ni yiqitmaymiz: job natijasi faqat tekshiruvni
+          # aks ettirsin, aks holda keyingi run "oldingi holat"ni noto'g'ri o'qiydi.
+          response="$(curl -sS --max-time 20 "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT_ID}" \
+            --data-urlencode "text=${text}" \
+            --data-urlencode "disable_web_page_preview=true")" || true
+          if [[ "$response" != *'"ok":true'* ]]; then
+            echo "::warning::Telegram xabari ketmadi: ${response:-javob kelmadi}"
+            exit 0
+          fi
+          echo "Telegram'ga yuborildi: $title"

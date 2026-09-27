@@ -178,6 +178,24 @@ ega materiallarni chiqaradi. Dublikat, kategoriya override, past confidence,
 ishonchsiz manba yoki manbada topilmagan fakt dalili maqolani baribir `pending`
 holatida qoldiradi.
 
+## Monitoring
+
+`GET /health` — baza, pipeline va amaldagi chegaralar holati. Baza ishlamasa
+`503` qaytaradi va sababini `database_error` maydonida aytadi; ilova esa
+ko'tarilib turadi va baza qaytgach fon vazifalarini o'zi ishga tushiradi.
+
+[`.github/workflows/keep-render-awake.yml`](.github/workflows/keep-render-awake.yml)
+backend (`/health`) va saytni tekshiradi (`bash .github/scripts/monitor.sh`
+lokal ham ishlaydi). Holat o'zgarganda — yiqilganda va tiklanganda — Telegram'ga
+xabar yuboradi. Buning uchun repo **Settings → Secrets → Actions**'ga:
+
+| Secret | Qiymat |
+|---|---|
+| `ALERT_TELEGRAM_BOT_TOKEN` | Bot tokeni (mavjud botniki bo'lishi mumkin) |
+| `ALERT_TELEGRAM_CHAT_ID` | Shaxsiy chat ID (kanal emas!) — botga avval `/start` yozing |
+
+Sozlamani sinash: Actions → workflow → **Run workflow** → `test_alert` belgilang.
+
 ## Kelajakdagi rejalar (TZ bo'yicha)
 
 - Redis kesh, email obuna, push bildirishnomalar
