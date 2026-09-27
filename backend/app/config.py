@@ -1,10 +1,22 @@
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def pin_postgres_driver(url: str) -> str:
+    """Drayverni aniq ko'rsatadi: SQLAlchemy 2.1 "postgresql://" uchun standartni
+    psycopg2 dan psycopg (v3) ga almashtirdi, o'rnatilgani esa psycopg2-binary.
+    Render bergan URL bilan yangi build ilovani importdayoq yiqitardi
+    (ModuleNotFoundError: psycopg)."""
+    return re.sub(r"^postgres(ql)?://", "postgresql+psycopg2://", url)
+
+
 # Ma'lumotlar bazasi: prod'da PostgreSQL, lokal ishlab chiqishda SQLite yetarli.
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./futbolxabar.db")
+DATABASE_URL = pin_postgres_driver(
+    os.getenv("DATABASE_URL", "sqlite:///./futbolxabar.db")
+)
 
 # AI provayder: "gemini" (standart), "vertex" yoki "claude"
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").strip().lower()
