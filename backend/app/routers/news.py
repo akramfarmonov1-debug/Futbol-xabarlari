@@ -3,22 +3,52 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func, or_
+from sqlalchemy.orm import Session, defer, joinedload, load_only, with_expression
 
+from .. import cache
 from ..database import get_db
 from ..models import Article, Category
-from ..schemas import ArticleOut, SitemapArticleOut
+from ..schemas import ArticleCardOut, ArticleOut, SitemapArticleOut
 from ..tags import canonical_tag, tag_key
 
 router = APIRouter(prefix="/api/news", tags=["news"])
+
+# Baza Neon'da, bepul tarif oyiga 5 GB trafik beradi — u ro'yxatlar uchun
+# to'liq maqola matnini qayta-qayta o'qishga ketgan. Ro'yxatlar matnsiz
+# (kartochka) olinadi, o'qish vaqti esa SQL'da hisoblanadi: so'zlar ≈
+# bo'shliqlar + 1 (length/replace SQLite va PostgreSQL'da bir xil).
+_CONTENT_WORDS = (
+    func.length(Article.content)
+    - func.length(func.replace(Article.content, " ", ""))
+    + 1
+)
+READING_MINUTES = (_CONTENT_WORDS + 199) // 200
+
+# Kesh muddatlari, soniya: yangi yoki tahrirlangan maqola ro'yxatlarda
+# ko'pi bilan shuncha kechikib ko'rinadi.
+LIST_TTL = 60
+SLOW_TTL = 300
+SITEMAP_TTL = 600
 
 
 def published(db: Session):
     return db.query(Article).filter(Article.status == "published")
 
 
-@router.get("", response_model=list[ArticleOut])
+def published_cards(db: Session):
+    return published(db).options(
+        defer(Article.content),
+        joinedload(Article.category),
+        with_expression(Article.reading_minutes, READING_MINUTES),
+    )
+
+
+def _cards(query) -> list[ArticleCardOut]:
+    return [ArticleCardOut.model_validate(article) for article in query.all()]
+
+
+@router.get("", response_model=list[ArticleCardOut])
 def latest_news(
     db: Session = Depends(get_db),
     kategoriya: str | None = None,
@@ -26,48 +56,56 @@ def latest_news(
     offset: int = 0,
 ):
     """Eng so'nggi yangiliklar (ixtiyoriy kategoriya filtri bilan)."""
-    query = published(db)
-    if kategoriya:
-        query = query.join(Category).filter(Category.slug == kategoriya)
-    return (
-        query.order_by(Article.published_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+
+    def load():
+        query = published_cards(db)
+        if kategoriya:
+            query = query.join(Category).filter(Category.slug == kategoriya)
+        return _cards(
+            query.order_by(Article.published_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+
+    return cache.cached(("latest", kategoriya, limit, offset), LIST_TTL, load)
 
 
-@router.get("/top", response_model=list[ArticleOut])
+@router.get("/top", response_model=list[ArticleCardOut])
 def top_news(db: Session = Depends(get_db), kunlar: int = 7, limit: int = Query(default=5, le=50)):
     """Top yangiliklar — o'qilishlar soni va muhimlik bahosi bo'yicha."""
-    since = datetime.utcnow() - timedelta(days=kunlar)
-    articles = (
-        published(db)
-        .filter(Article.published_at >= since)
-        .order_by(Article.views_count.desc(), Article.importance.desc(), Article.published_at.desc())
-        .limit(limit)
-        .all()
-    )
-    if not articles:
-        articles = (
-            published(db)
+
+    def load():
+        since = datetime.utcnow() - timedelta(days=kunlar)
+        articles = _cards(
+            published_cards(db)
+            .filter(Article.published_at >= since)
             .order_by(Article.views_count.desc(), Article.importance.desc(), Article.published_at.desc())
             .limit(limit)
-            .all()
         )
-    return articles
+        if not articles:
+            articles = _cards(
+                published_cards(db)
+                .order_by(Article.views_count.desc(), Article.importance.desc(), Article.published_at.desc())
+                .limit(limit)
+            )
+        return articles
+
+    return cache.cached(("top", kunlar, limit), LIST_TTL, load)
 
 
-@router.get("/digest", response_model=list[ArticleOut])
+@router.get("/digest", response_model=list[ArticleCardOut])
 def daily_digest(db: Session = Depends(get_db)):
     """Bugungi futbol dayjesti — bugun chop etilgan barcha yangiliklar."""
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    return (
-        published(db)
-        .filter(Article.published_at >= today)
-        .order_by(Article.importance.desc())
-        .all()
-    )
+
+    def load():
+        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        return _cards(
+            published_cards(db)
+            .filter(Article.published_at >= today)
+            .order_by(Article.importance.desc())
+        )
+
+    return cache.cached(("digest",), LIST_TTL, load)
 
 
 @router.get("/trends")
@@ -77,24 +115,34 @@ def trend_topics(db: Session = Depends(get_db), kunlar: int = 7, limit: int = 15
     Teglar kanonik yozuvi bo'yicha guruhlanadi, shuning uchun eski
     xabarlardagi "Barsa" yozuvi "Barcelona" bilan bitta mavzu bo'lib sanaladi.
     """
-    since = datetime.utcnow() - timedelta(days=kunlar)
-    articles = published(db).filter(Article.published_at >= since).all()
 
-    totals: Counter = Counter()
-    spellings: dict[str, Counter] = defaultdict(Counter)
-    for article in articles:
-        for tag in article.tags or []:
-            canonical = canonical_tag(tag)
-            if not canonical:
-                continue
-            key = tag_key(canonical)
-            totals[key] += 1
-            spellings[key][canonical] += 1
+    def load():
+        since = datetime.utcnow() - timedelta(days=kunlar)
+        # Faqat teglar ustuni: ilgari 7 kunlik barcha maqolalar to'liq o'qilardi.
+        rows = (
+            published(db)
+            .filter(Article.published_at >= since)
+            .with_entities(Article.tags)
+            .all()
+        )
 
-    return [
-        {"teg": spellings[key].most_common(1)[0][0], "soni": count}
-        for key, count in totals.most_common(limit)
-    ]
+        totals: Counter = Counter()
+        spellings: dict[str, Counter] = defaultdict(Counter)
+        for (tags,) in rows:
+            for tag in tags or []:
+                canonical = canonical_tag(tag)
+                if not canonical:
+                    continue
+                key = tag_key(canonical)
+                totals[key] += 1
+                spellings[key][canonical] += 1
+
+        return [
+            {"teg": spellings[key].most_common(1)[0][0], "soni": count}
+            for key, count in totals.most_common(limit)
+        ]
+
+    return cache.cached(("trends", kunlar, limit), SLOW_TTL, load)
 
 
 @router.get("/sitemap", response_model=list[SitemapArticleOut])
@@ -103,26 +151,37 @@ def sitemap_articles(
     hours: int | None = Query(default=None, ge=1, le=168),
 ):
     """Sitemaplar uchun matnsiz, yengil maqola ro'yxati."""
-    query = published(db).options(joinedload(Article.category))
-    if hours is not None:
-        query = query.filter(
-            Article.published_at
-            >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
+
+    def load():
+        # Faqat to'rtta ustun: ilgari har bir sitemap so'rovi barcha
+        # maqolalarni to'liq matni bilan o'qirdi.
+        query = (
+            published(db)
+            .outerjoin(Category, Article.category_id == Category.id)
+            .with_entities(Article.slug, Article.title, Article.published_at, Category.slug)
         )
+        if hours is not None:
+            query = query.filter(
+                Article.published_at
+                >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
+            )
 
-    articles = query.order_by(Article.published_at.desc()).all()
-    return [
-        SitemapArticleOut(
-            slug=article.slug,
-            title=article.title,
-            published_at=article.published_at,
-            category_slug=article.category.slug if article.category else None,
-        )
-        for article in articles
-    ]
+        return [
+            SitemapArticleOut(
+                slug=slug,
+                title=title,
+                published_at=published_at,
+                category_slug=category_slug,
+            )
+            for slug, title, published_at, category_slug in query.order_by(
+                Article.published_at.desc()
+            ).all()
+        ]
+
+    return cache.cached(("sitemap", hours), SITEMAP_TTL, load)
 
 
-@router.get("/search", response_model=list[ArticleOut])
+@router.get("/search", response_model=list[ArticleCardOut])
 def search_news(q: str, db: Session = Depends(get_db), limit: int = Query(default=20, le=100)):
     """Sarlavha, xulosa va matn bo'yicha kengaytirilgan qidiruv."""
     raw_query = q.strip()
@@ -153,24 +212,30 @@ def search_news(q: str, db: Session = Depends(get_db), limit: int = Query(defaul
             Article.summary.ilike(f"%{word}%"),
         ])
 
-    return (
-        published(db)
+    return _cards(
+        published_cards(db)
         .filter(or_(*filters))
         .order_by(Article.published_at.desc())
         .limit(limit)
-        .all()
     )
 
 
 @router.get("/rss")
 def get_rss_feed(db: Session = Depends(get_db)):
     """Google News va boshqa agregatorlar uchun RSS feed."""
-    import html
     from fastapi import Response
+
+    xml = cache.cached(("rss",), SLOW_TTL, lambda: _rss_xml(db))
+    return Response(content=xml, media_type="application/xml")
+
+
+def _rss_xml(db: Session) -> str:
+    import html
     from ..config import FRONTEND_ORIGIN
 
     articles = (
         published(db)
+        .options(load_only(Article.title, Article.slug, Article.summary, Article.published_at))
         .order_by(Article.published_at.desc())
         .limit(50)
         .all()
@@ -203,53 +268,86 @@ def get_rss_feed(db: Session = Depends(get_db)):
         f"</channel>\n"
         f"</rss>"
     )
-    return Response(content=rss_xml, media_type="application/xml")
+    return rss_xml
 
 
-@router.get("/{slug}/related", response_model=list[ArticleOut])
+@router.get("/{slug}/related", response_model=list[ArticleCardOut])
 def related_news(
     slug: str,
     db: Session = Depends(get_db),
     limit: int = Query(default=4, le=10),
 ):
     """O'xshash xabarlar — bir kategoriya yoki umumiy teglar bo'yicha."""
-    article = published(db).filter(Article.slug == slug).first()
-    if not article:
-        raise HTTPException(status_code=404, detail="Maqola topilmadi")
 
-    tags = set(article.tags or [])
-    category_id = article.category_id
+    def load():
+        article = (
+            published(db)
+            .options(load_only(Article.id, Article.category_id, Article.tags))
+            .filter(Article.slug == slug)
+            .first()
+        )
+        if not article:
+            raise HTTPException(status_code=404, detail="Maqola topilmadi")
 
-    candidates = (
-        published(db)
-        .filter(Article.id != article.id)
-        .order_by(Article.published_at.desc())
-        .limit(150)
-        .all()
-    )
+        tags = set(article.tags or [])
+        category_id = article.category_id
 
-    def _score(candidate: Article) -> int:
-        score = 0
-        if category_id and candidate.category_id == category_id:
-            score += 2
-        score += len(tags & set(candidate.tags or [])) * 3
-        return score
+        # Baholash uchun to'rtta ustun yetadi: ilgari har bir maqola sahifasi
+        # 150 ta maqolani to'liq matni bilan o'qirdi.
+        candidates = (
+            published(db)
+            .filter(Article.id != article.id)
+            .with_entities(Article.id, Article.category_id, Article.tags, Article.published_at)
+            .order_by(Article.published_at.desc())
+            .limit(150)
+            .all()
+        )
 
-    scored = [(candidate, _score(candidate)) for candidate in candidates]
-    scored.sort(
-        key=lambda pair: (pair[1], pair[0].published_at or datetime.min),
-        reverse=True,
-    )
-    return [candidate for candidate, score in scored if score > 0][:limit]
+        def _score(candidate) -> int:
+            score = 0
+            if category_id and candidate.category_id == category_id:
+                score += 2
+            score += len(tags & set(candidate.tags or [])) * 3
+            return score
+
+        scored = [(candidate, _score(candidate)) for candidate in candidates]
+        scored.sort(
+            key=lambda pair: (pair[1], pair[0].published_at or datetime.min),
+            reverse=True,
+        )
+        ids = [candidate.id for candidate, score in scored if score > 0][:limit]
+        if not ids:
+            return []
+        cards = {
+            card.id: card
+            for card in _cards(published_cards(db).filter(Article.id.in_(ids)))
+        }
+        return [cards[article_id] for article_id in ids if article_id in cards]
+
+    return cache.cached(("related", slug, limit), SLOW_TTL, load)
 
 
 @router.get("/{slug}", response_model=ArticleOut)
 def article_detail(slug: str, db: Session = Depends(get_db)):
-    article = published(db).filter(Article.slug == slug).first()
+    article = (
+        published(db)
+        .options(joinedload(Article.category))
+        .filter(Article.slug == slug)
+        .first()
+    )
     if not article:
         raise HTTPException(status_code=404, detail="Maqola topilmadi")
-    article.views_count = (article.views_count or 0) + 1
+    # Ko'rishlar soni alohida UPDATE bilan oshadi: updated_at ("Oxirgi
+    # yangilangan") har ko'rishda o'zgarmasin va commit'dan keyin qator
+    # to'liq matni bilan qayta o'qilmasin (ilgari db.refresh shunday qilardi).
+    db.query(Article).filter(Article.id == article.id).update(
+        {
+            Article.views_count: Article.views_count + 1,
+            Article.updated_at: Article.updated_at,
+        },
+        synchronize_session="evaluate",
+    )
+    body = ArticleOut.model_validate(article)
     db.commit()
-    db.refresh(article)
-    return article
+    return body
 

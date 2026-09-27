@@ -47,7 +47,9 @@ class IngestionDecisionOut(BaseModel):
     updated_at: datetime
 
 
-class ArticleOut(BaseModel):
+class ArticleBaseOut(BaseModel):
+    """Maqola maydonlari — to'liq matn (content) dan tashqari hammasi."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -55,7 +57,6 @@ class ArticleOut(BaseModel):
     seo_title: str
     slug: str
     summary: str
-    content: str
     practical_note: str
     tags: list
     importance: int
@@ -70,6 +71,20 @@ class ArticleOut(BaseModel):
     views_count: int = 0
     created_at: datetime
     updated_at: datetime | None = None
+
+
+class ArticleCardOut(ArticleBaseOut):
+    """Ro'yxatlar uchun: to'liq matn o'rniga o'qish vaqti.
+
+    Sayt kartochkalari va bot ro'yxatlari matnni ishlatmaydi; uni har bir
+    ro'yxatda bazadan olib chiqish Neon trafigini yeydi.
+    """
+
+    reading_minutes: int | None = None
+
+
+class ArticleOut(ArticleBaseOut):
+    content: str
 
 
 class SitemapArticleOut(BaseModel):

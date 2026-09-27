@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from .. import cache
 from ..database import get_db
 from ..services import legionnaires
 from ..services.legionnaires_alert import broadcast_legionnaire_alert
@@ -28,7 +29,11 @@ class LegionnaireAlertRequest(BaseModel):
 @router.get("")
 def list_legionnaires(db: Session = Depends(get_db)):
     """O'zbekistonlik legionerlar va ularga oid yangiliklar xulosasi."""
-    return legionnaires.get_legionnaires_summary(db)
+    # Har bir futbolchi uchun alohida so'rov ketadi — bosh sahifaning har
+    # ko'rilishida takrorlanmasin.
+    return cache.cached(
+        ("legionnaires",), 300, lambda: legionnaires.get_legionnaires_summary(db)
+    )
 
 
 @router.get("/{slug}")

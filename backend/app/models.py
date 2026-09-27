@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, query_expression, relationship
 
 from .database import Base
 
@@ -64,6 +64,9 @@ class Article(Base):
         onupdate=datetime.utcnow,
         nullable=True,
     )
+    # Kartochkalar uchun o'qish vaqti: to'liq matnni bazadan olib chiqmasdan
+    # SQL'da hisoblanadi (routers/news.py, with_expression). Boshqa so'rovlarda None.
+    reading_minutes: Mapped[int | None] = query_expression()
 
 
 class ArticleSource(Base):

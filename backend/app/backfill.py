@@ -9,7 +9,7 @@ u faqat o'qiydi.
 Qo'lda ishga tushirish:  python -m app.backfill
 """
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from .models import Article
 from .tags import normalize_tags
@@ -18,7 +18,9 @@ from .tags import normalize_tags
 def backfill_tags(db: Session) -> int:
     """Teglari kanonik bo'lmagan xabarlarni yangilaydi; o'zgargan soni qaytadi."""
     changed = 0
-    for article in db.query(Article).all():
+    # Faqat id va teglar: jarayon har ishga tushganda (Render uyg'onganda ham)
+    # butun jadval to'liq matni bilan o'qilmasin.
+    for article in db.query(Article).options(load_only(Article.id, Article.tags)).all():
         current = list(article.tags or [])
         canonical = normalize_tags(current)
         if canonical != current:

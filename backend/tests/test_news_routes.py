@@ -13,6 +13,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app import cache
 from app.database import Base, get_db
 from app.main import app
 from app.models import Article, Category
@@ -39,6 +40,9 @@ class NewsRouteTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
         app.dependency_overrides.pop(get_db, None)
+
+    def setUp(self):
+        cache.clear()
 
     def test_latest_detail_and_related(self):
         cat = Category(name="Premyer-liga", slug="premyer-liga")

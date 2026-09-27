@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 
-from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
+from sqlalchemy.orm import Session, load_only
 
 from ..models import Article, ArticleQuality, ArticleSource
 
@@ -263,6 +263,32 @@ def compare_events(
     return EventMatch(duplicate, score, tuple(reasons), is_followup=is_followup)
 
 
+# Nomzodlar matni (sarlavha + xulosa + to'liq matn) jarayon xotirasida
+# saqlanadi. Pipeline har bir yangi xabar uchun bu funksiyani ikki marta
+# chaqiradi va 250 tagacha maqola bilan solishtiradi: har safar to'liq matnni
+# bazadan o'qish Neon'ning oylik trafik limitini tugatgan asosiy sabab edi.
+# Kalitda updated_at va matn uzunligi bor — maqola tahrir qilinsa, qayta o'qiladi.
+_candidate_texts: dict[tuple, str] = {}
+_CANDIDATE_TEXTS_MAX = 2000
+
+
+def _load_candidate_texts(db: Session, keys: list[tuple]) -> None:
+    missing = [key[0] for key in keys if key not in _candidate_texts]
+    if not missing:
+        return
+    if len(_candidate_texts) + len(missing) > _CANDIDATE_TEXTS_MAX:
+        _candidate_texts.clear()
+    rows = (
+        db.query(Article.id, Article.updated_at, Article.title, Article.summary, Article.content)
+        .filter(Article.id.in_(missing))
+        .all()
+    )
+    for row in rows:
+        _candidate_texts[(row.id, row.updated_at, len(row.content))] = (
+            f"{row.title} {row.summary} {row.content}"
+        )
+
+
 def find_duplicate_article(
     db: Session,
     title: str,
@@ -280,7 +306,8 @@ def find_duplicate_article(
     reference_time = published_at or datetime.utcnow()
     cutoff = reference_time - timedelta(days=lookback_days)
     candidates = (
-        db.query(Article)
+        db.query(Article, func.length(Article.content))
+        .options(load_only(Article.id, Article.title, Article.original_title, Article.updated_at))
         .filter(
             Article.status.in_(("pending", "published")),
             or_(
@@ -292,25 +319,38 @@ def find_duplicate_article(
         .limit(250)
         .all()
     )
+    keys = [(article.id, article.updated_at, length) for article, length in candidates]
+    _load_candidate_texts(db, keys)
     # ArticleQuality joylanmagan eski maqolalar ham bo'lishi mumkin.
     quality_by_id: dict[int, "ArticleQuality"] = {}
     if event_key or entities:
         quality_rows = (
             db.query(ArticleQuality)
+            .options(
+                load_only(
+                    ArticleQuality.article_id,
+                    ArticleQuality.event_key,
+                    ArticleQuality.entities,
+                )
+            )
             .filter(
-                ArticleQuality.article_id.in_([a.id for a in candidates]),
+                ArticleQuality.article_id.in_([key[0] for key in keys]),
             )
             .all()
         )
         quality_by_id = {q.article_id: q for q in quality_rows}
 
-    for article in candidates:
+    for (article, _length), key in zip(candidates, keys):
         quality = quality_by_id.get(article.id)
+        text = _candidate_texts.get(key)
+        if text is None:
+            # Ikki so'rov orasida tahrir bo'lgan — kam holat, matn shu yerda o'qiladi.
+            text = f"{article.title} {article.summary} {article.content}"
         match = compare_events(
             title,
             content,
             article.original_title or article.title,
-            f"{article.title} {article.summary} {article.content}",
+            text,
             first_event_key=event_key,
             second_event_key=(quality.event_key if quality else ""),
             first_entities=entities,

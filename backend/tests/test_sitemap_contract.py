@@ -4,12 +4,16 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app import cache
 from app.database import Base
 from app.models import Article, Category
 from app.routers.news import sitemap_articles
 
 
 class SitemapContractTests(unittest.TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_sitemap_is_lightweight_and_only_contains_published_articles(self):
         engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(engine)

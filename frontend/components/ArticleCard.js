@@ -11,10 +11,14 @@ export function formatViews(count) {
 
 export default function ArticleCard({ article, compact = false }) {
   const stars = "⭐".repeat(Math.max(1, Math.min(5, article.importance)));
-  const readingMinutes = Math.max(
-    1,
-    Math.ceil((article.content || article.summary || "").split(/\s+/).length / 200),
-  );
+  // Ro'yxat API'lari to'liq matnni yubormaydi — o'qish vaqti backend'da
+  // hisoblanadi (reading_minutes). Boshqa manbalar uchun eski hisob qoladi.
+  const readingMinutes =
+    article.reading_minutes ??
+    Math.max(
+      1,
+      Math.ceil((article.content || article.summary || "").split(/\s+/).length / 200),
+    );
   const date = formatUzDate(article.published_at);
 
   if (compact) {

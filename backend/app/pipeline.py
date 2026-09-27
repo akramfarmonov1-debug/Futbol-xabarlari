@@ -318,7 +318,7 @@ def _run_pipeline(per_feed: int = 5) -> int:
                 )
 
             slug = slugify(analysis["sarlavha"])
-            if db.query(Article).filter(Article.slug == slug).first():
+            if db.query(Article.id).filter(Article.slug == slug).first():
                 slug = f"{slug}-{saved + 1}"
 
             auto_publishable, auto_publish_reasons = analysis_is_auto_publishable(

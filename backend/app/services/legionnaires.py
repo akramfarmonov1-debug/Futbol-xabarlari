@@ -1,7 +1,7 @@
 """O'zbekistonlik legioner futbolchilar haqida ma'lumotlar va yangiliklar agregatori."""
 
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, load_only
 
 from ..models import Article
 
@@ -104,6 +104,15 @@ def get_legionnaires_summary(db: Session) -> list[dict]:
 
         articles = (
             db.query(Article)
+            .options(
+                load_only(
+                    Article.id,
+                    Article.title,
+                    Article.slug,
+                    Article.published_at,
+                    Article.image_url,
+                )
+            )
             .filter(Article.status == "published")
             .filter(or_(*filters))
             .order_by(Article.published_at.desc())
@@ -141,6 +150,17 @@ def get_legionnaire_detail(db: Session, slug: str) -> dict | None:
 
     articles = (
         db.query(Article)
+        .options(
+            load_only(
+                Article.id,
+                Article.title,
+                Article.slug,
+                Article.summary,
+                Article.published_at,
+                Article.image_url,
+                Article.importance,
+            )
+        )
         .filter(Article.status == "published")
         .filter(or_(*filters))
         .order_by(Article.published_at.desc())

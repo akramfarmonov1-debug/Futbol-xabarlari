@@ -10,6 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
 from .config import (
@@ -226,7 +227,7 @@ def health():
     }
     db = SessionLocal()
     try:
-        latest = db.query(Article).order_by(Article.created_at.desc()).first()
+        latest = db.query(func.max(Article.created_at)).scalar()
     except SQLAlchemyError as e:
         # 503 — monitoring nosozlikni sezadi; sababi esa javobning o'zida,
         # Render log'ini ochmasdan ham nima yiqilgani ko'rinadi.
@@ -234,5 +235,5 @@ def health():
         return JSONResponse(status_code=503, content=jsonable_encoder(body))
     finally:
         db.close()
-    body["latest_article_at"] = latest.created_at if latest else None
+    body["latest_article_at"] = latest
     return body
