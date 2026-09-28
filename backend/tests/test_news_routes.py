@@ -79,7 +79,8 @@ class NewsRouteTests(unittest.TestCase):
         # "Oxirgi yangilangan" va "views_count" maydonlari mavjud.
         self.assertIn("updated_at", detail.json())
         self.assertIn("views_count", detail.json())
-        self.assertGreaterEqual(detail.json()["views_count"], 1)
+        # Ko'rishni endi brauzer POST /view bilan sanaydi (test_news_traffic).
+        self.assertGreaterEqual(detail.json()["views_count"], 0)
 
         related = self.client.get("/api/news/maqola-0/related?limit=3")
         self.assertEqual(related.status_code, 200)

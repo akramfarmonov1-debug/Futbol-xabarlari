@@ -12,6 +12,12 @@ const API_URL =
 // limitini yeydi.
 const API_TIMEOUT_MS = 5_000;
 
+// Javoblar Next'ning keshida shuncha soniya turadi va sahifalar ISR bilan
+// keshlanadi (app/layout.js dagi revalidate): har bir tashrif funksiya ishga
+// tushirmaydi, backend va bazaga ham daqiqada ko'pi bilan bir marta boriladi.
+// Vercel Hobby limiti aynan har tashrifda qaytadan yasalgan sahifalarga ketgan.
+const API_REVALIDATE_SECONDS = 60;
+
 export class ApiUnavailableError extends Error {
   name = "ApiUnavailableError";
 }
@@ -28,7 +34,7 @@ export async function apiGetOrThrow(path, params = {}) {
   let res;
   try {
     res = await fetch(url, {
-      cache: "no-store",
+      next: { revalidate: API_REVALIDATE_SECONDS },
       signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
   } catch (error) {
@@ -39,6 +45,21 @@ export async function apiGetOrThrow(path, params = {}) {
   }
   if (!res.ok) return null;
   return res.json();
+}
+
+// Keshlanadigan sahifaning asosiy ma'lumoti uchun (bosh sahifa, kategoriya,
+// legionerlar). Ish vaqtida backend javob bermasa xato tashlanadi: ISR yangilash
+// muvaffaqiyatsiz bo'lsa, Next oxirgi yaxshi nusxani berishda davom etadi —
+// uni "server javob bermayapti" bilan almashtirmaydi. Build paytida esa null
+// qaytadi: backend uxlab qolgan bo'lsa deploy yiqilmasin, sahifa esa birinchi
+// tashrifdan keyin 60 soniyada o'zi yangilanadi.
+export async function apiGetPrimary(path, params = {}) {
+  try {
+    return await apiGetOrThrow(path, params);
+  } catch (error) {
+    if (process.env.NEXT_PHASE === "phase-production-build") return null;
+    throw error;
+  }
 }
 
 // Har qanday xatoda null. Ro'yxatlarda null bilan [] farqli: null — backend

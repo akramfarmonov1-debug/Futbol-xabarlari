@@ -2,7 +2,7 @@ import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, defer, joinedload, load_only, with_expression
 
@@ -337,17 +337,31 @@ def article_detail(slug: str, db: Session = Depends(get_db)):
     )
     if not article:
         raise HTTPException(status_code=404, detail="Maqola topilmadi")
-    # Ko'rishlar soni alohida UPDATE bilan oshadi: updated_at ("Oxirgi
-    # yangilangan") har ko'rishda o'zgarmasin va commit'dan keyin qator
-    # to'liq matni bilan qayta o'qilmasin (ilgari db.refresh shunday qilardi).
-    db.query(Article).filter(Article.id == article.id).update(
-        {
-            Article.views_count: Article.views_count + 1,
-            Article.updated_at: Article.updated_at,
-        },
-        synchronize_session="evaluate",
+    return article
+
+
+@router.post("/{slug}/view", status_code=204)
+def count_view(slug: str, db: Session = Depends(get_db)):
+    """Bitta ko'rishni sanaydi — brauzer maqolani ochganda yuboradi.
+
+    Sayt sahifalari keshlanadi (ISR): maqola daqiqada ko'pi bilan bir marta
+    yasaladi, shuning uchun ko'rishni GET /{slug} ichida sanash tashriflarni
+    emas, sahifa yangilanishlarini sanardi. Qator o'qilmaydi (faqat UPDATE),
+    updated_at ("Oxirgi yangilangan") esa ko'rishlar bilan o'zgarmaydi.
+    """
+    counted = (
+        published(db)
+        .filter(Article.slug == slug)
+        .update(
+            {
+                Article.views_count: Article.views_count + 1,
+                Article.updated_at: Article.updated_at,
+            },
+            synchronize_session=False,
+        )
     )
-    body = ArticleOut.model_validate(article)
+    if not counted:
+        raise HTTPException(status_code=404, detail="Maqola topilmadi")
     db.commit()
-    return body
+    return Response(status_code=204)
 

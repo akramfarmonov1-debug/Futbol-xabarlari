@@ -5,12 +5,12 @@ import AdPlaceholder from "../components/AdPlaceholder";
 import ApiUnavailable from "../components/ApiUnavailable";
 import LiveScores from "../components/LiveScores";
 import LegionnairesWidget from "../components/LegionnairesWidget";
-import { apiGet } from "../lib/api";
+import { apiGet, apiGetPrimary } from "../lib/api";
 import { formatUzDate } from "../lib/date";
 
 export default async function HomePage() {
   const [latest, top, digest, trends] = await Promise.all([
-    apiGet("/api/news", { limit: 13 }),
+    apiGetPrimary("/api/news", { limit: 13 }),
     apiGet("/api/news/top", { limit: 5, kunlar: 1 }),
     apiGet("/api/news/digest"),
     apiGet("/api/news/trends"),

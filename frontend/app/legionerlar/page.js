@@ -1,7 +1,7 @@
 import Link from "next/link";
 import ApiUnavailable from "../../components/ApiUnavailable";
 import ArticleCard from "../../components/ArticleCard";
-import { apiGet } from "../../lib/api";
+import { apiGetPrimary } from "../../lib/api";
 import { SITE_NAME, SITE_URL } from "../../lib/site";
 
 export const metadata = {
@@ -19,7 +19,7 @@ export const metadata = {
 };
 
 export default async function LegionnairesPage() {
-  const data = await apiGet("/api/legionnaires");
+  const data = await apiGetPrimary("/api/legionnaires");
   const legionnaires = data || [];
 
   return (

@@ -130,6 +130,10 @@ function TeamIdentity({ row }) {
 }
 
 export default async function StandingsPage({ searchParams }) {
+  // Parametr birinchi o'qiladi: sahifa har so'rovda ?turnir bo'yicha yasalishi
+  // kerak. Aks holda build'da backend javob bermasa sahifa parametrgacha yetmay
+  // qaytadi va Next uni statik deb keshlab, turnir tanlashni buzardi.
+  const { turnir } = await searchParams;
   const competitions = await apiGet("/api/scores/competitions");
 
   if (!competitions?.length) {
@@ -150,7 +154,6 @@ export default async function StandingsPage({ searchParams }) {
     );
   }
 
-  const { turnir } = await searchParams;
   const active =
     competitions.find((competition) => competition.code === turnir) ||
     competitions[0];

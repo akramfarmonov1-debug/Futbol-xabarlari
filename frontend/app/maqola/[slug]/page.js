@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdPlaceholder from "../../../components/AdPlaceholder";
 import CopyLinkButton from "../../../components/CopyLinkButton";
+import ViewTracker from "../../../components/ViewTracker";
 import { apiGet, apiGetOrThrow } from "../../../lib/api";
 import { formatUzDate, formatUzDateTime } from "../../../lib/date";
 import { truncateSeoText } from "../../../lib/seo";
@@ -12,6 +13,12 @@ import { SITE_URL, SITE_NAME } from "../../../lib/site";
 // Backend javob bermasa xato tashlanadi (error.js), "topilmadi" emas: aks holda
 // uzilish paytida har bir maqola noindex 404 bo'lib, Google'dan tushib ketadi.
 const getArticle = cache((slug) => apiGetOrThrow(`/api/news/${slug}`));
+
+// Bo'sh ro'yxat: maqolalar build'da emas, birinchi tashrifda yasaladi va keyin
+// keshlanadi (ISR). Usiz dinamik sahifa har tashrifda qayta yasalardi.
+export async function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -137,6 +144,7 @@ export default async function ArticlePage({ params }) {
 
   return (
     <article className="mx-auto max-w-2xl py-4 sm:py-8">
+      <ViewTracker slug={article.slug} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

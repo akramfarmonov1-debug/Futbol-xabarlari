@@ -105,14 +105,28 @@ class ListTrafficTests(unittest.TestCase):
             # Bot ro'yxatlarda "Nega muhim?" bo'limini shu maydondan ko'rsatadi.
             self.assertEqual(card["practical_note"], "Nega muhim.")
 
-    def test_detail_keeps_the_body_and_views_leave_updated_at_alone(self):
+    def test_views_are_counted_by_the_beacon_not_by_rendering(self):
+        """Sahifa keshlanadi (ISR): GET sahifa yangilanganda keladi, tashrifda emas."""
         first = self.client.get("/api/news/transfer-0").json()
-        second = self.client.get("/api/news/transfer-0").json()
+        again = self.client.get("/api/news/transfer-0").json()
+        self.statements.clear()
+        beacon = self.client.post("/api/news/transfer-0/view")
+        after = self.client.get("/api/news/transfer-0").json()
 
         self.assertIn("so'z", first["content"])
-        self.assertEqual(second["views_count"], first["views_count"] + 1)
+        self.assertEqual(again["views_count"], first["views_count"])
+        self.assertEqual(beacon.status_code, 204)
+        self.assertEqual(after["views_count"], first["views_count"] + 1)
         # "Oxirgi yangilangan" ko'rishlar bilan emas, tahrir bilan o'zgaradi.
-        self.assertEqual(second["updated_at"], first["updated_at"])
+        self.assertEqual(after["updated_at"], first["updated_at"])
+
+    def test_view_beacon_does_not_read_the_article(self):
+        self.client.post("/api/news/transfer-1/view")
+
+        self.assertEqual([s for s in self.statements if s.lstrip().upper().startswith("SELECT")], [])
+
+    def test_view_beacon_for_unknown_article_is_404(self):
+        self.assertEqual(self.client.post("/api/news/yoq-maqola/view").status_code, 404)
 
     def test_related_and_trends_keep_their_results(self):
         related = self.client.get("/api/news/transfer-0/related?limit=5").json()

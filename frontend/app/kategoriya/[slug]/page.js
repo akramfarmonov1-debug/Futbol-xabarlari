@@ -1,6 +1,12 @@
 import ApiUnavailable from "../../../components/ApiUnavailable";
 import ArticleCard from "../../../components/ArticleCard";
-import { apiGet } from "../../../lib/api";
+import { apiGet, apiGetPrimary } from "../../../lib/api";
+
+// Bo'sh ro'yxat: kategoriyalar build'da emas, birinchi tashrifda yasaladi va
+// keyin keshlanadi (ISR). Usiz dinamik sahifa har tashrifda qayta yasalardi.
+export async function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -23,7 +29,7 @@ export async function generateMetadata({ params }) {
 export default async function CategoryPage({ params }) {
   const { slug } = await params;
   const [articles, categories] = await Promise.all([
-    apiGet("/api/news", { kategoriya: slug, limit: 24 }),
+    apiGetPrimary("/api/news", { kategoriya: slug, limit: 24 }),
     apiGet("/api/categories"),
   ]);
   const category = (categories || []).find((c) => c.slug === slug);

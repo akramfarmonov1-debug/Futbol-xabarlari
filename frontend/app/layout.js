@@ -20,6 +20,11 @@ const outfit = Outfit({
 // sitemap va OG rasm meros olmaydi — ularda alohida yozilgan.
 export const maxDuration = 30;
 
+// Sahifalar keshlanadi va ko'pi bilan 60 soniyada bir yangilanadi (ISR) — lib/api.js
+// dagi API_REVALIDATE_SECONDS bilan bir xil. Qidiruv va jadval kabi so'rov
+// parametrli sahifalar baribir har safar yasaladi.
+export const revalidate = 60;
+
 const DESCRIPTION =
   "Jahon futbolining eng muhim yangiliklari — qisqa, tushunarli va o'zbek tilida. Premyer-liga, La Liga, Chempionlar ligasi, transferlar va O'zbekiston futboli.";
 
