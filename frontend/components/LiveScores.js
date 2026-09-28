@@ -30,6 +30,7 @@ function TeamCrest({ src, name }) {
   return (
     <span className="relative h-6 w-6 shrink-0">
       <Image
+        unoptimized // kichik gerb — qarang: next.config.mjs (images)
         src={src}
         alt={`${name} logotipi`}
         fill
@@ -131,6 +132,7 @@ export default async function LiveScores() {
                 {profile?.badge && (
                   <span className="relative h-5 w-5">
                     <Image
+                      unoptimized
                       src={profile.badge}
                       alt={`${group.competition} belgisi`}
                       fill

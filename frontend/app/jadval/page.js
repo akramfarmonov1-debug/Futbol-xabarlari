@@ -93,6 +93,7 @@ function LeagueBadge({ profile, name, size = 20 }) {
       style={{ width: size, height: size }}
     >
       <Image
+        unoptimized // kichik belgi — qarang: next.config.mjs (images)
         src={profile.badge}
         alt={`${name} belgisi`}
         fill
@@ -109,6 +110,7 @@ function TeamIdentity({ row }) {
       {row.crest ? (
         <span className="relative h-7 w-7 shrink-0">
           <Image
+            unoptimized
             src={row.crest}
             alt={`${row.team} logotipi`}
             fill
@@ -200,6 +202,7 @@ export default async function StandingsPage({ searchParams }) {
             <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/95 p-3 shadow-xl">
               {activeProfile?.badge ? (
                 <Image
+                  unoptimized
                   src={activeProfile.badge}
                   alt={`${active.name} belgisi`}
                   fill
