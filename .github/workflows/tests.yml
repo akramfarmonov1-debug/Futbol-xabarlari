@@ -72,6 +72,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      # Next 16'dan boshlab next build lint qilmaydi, shuning uchun alohida qadam.
+      - name: Lint
+        run: npm run lint
       - run: npx next build
         env:
           NEXT_TELEMETRY_DISABLED: 1

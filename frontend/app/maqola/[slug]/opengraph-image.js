@@ -89,6 +89,9 @@ export default async function OgImage({ params }) {
         </div>
 
         {hasImage && (
+          // ImageResponse (Satori) faqat oddiy <img>'ni tushunadi, natija esa PNG —
+          // next/image ham, alt matni ham bu yerda ma'nosiz.
+          // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
           <img
             src={article.image_url}
             width={420}

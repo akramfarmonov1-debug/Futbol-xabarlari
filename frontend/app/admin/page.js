@@ -21,6 +21,7 @@ export default function AdminPage() {
   useEffect(() => {
     const saved = localStorage.getItem("admin_token");
     if (saved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage faqat brauzerda bor; server render'i bilan mos kelishi uchun token effektda o'qiladi
       setToken(saved);
       setLoggedIn(true);
     }
@@ -63,6 +64,7 @@ export default function AdminPage() {
   }, [api, status]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() state'ni faqat await'dan keyin o'zgartiradi
     if (loggedIn) load();
   }, [loggedIn, load]);
 
