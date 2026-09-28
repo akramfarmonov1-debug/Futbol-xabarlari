@@ -1,6 +1,7 @@
 import { API_TIMEOUT_MS, API_URL } from "../../../../lib/api";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30; // qarang: app/layout.js
 
 export async function GET() {
   try {

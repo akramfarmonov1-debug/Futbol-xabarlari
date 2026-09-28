@@ -20,6 +20,8 @@ function escapeXml(value = "") {
     .replaceAll("'", "&apos;");
 }
 
+export const maxDuration = 30; // qarang: app/layout.js
+
 export async function GET() {
   let articles = [];
 

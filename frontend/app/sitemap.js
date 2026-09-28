@@ -6,6 +6,7 @@ import { SITE_URL } from "../lib/site";
 // qisqa muddat ichida bo'sh sitemap bilan xavfsiz davom etadi.
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
+export const maxDuration = 30; // qarang: app/layout.js
 
 const FETCH_ATTEMPTS = 2;
 const FETCH_TIMEOUT_MS = 5_000;

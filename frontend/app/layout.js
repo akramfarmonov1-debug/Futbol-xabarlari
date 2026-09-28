@@ -13,6 +13,13 @@ const outfit = Outfit({
   display: "swap",
 });
 
+// Vercel'da har bir sahifa funksiyasi ko'pi bilan 30 soniya ishlaydi. Backend
+// javob bermay qolganda sahifalar ~5 daqiqadan osilib turib, Hobby limitini
+// (Fluid Provisioned Memory) ikki barobar oshirgan va akkaunt to'xtatilgan edi.
+// Bu qiymat barcha sahifalarga layout'dan meros o'tadi; route handler'lar,
+// sitemap va OG rasm meros olmaydi — ularda alohida yozilgan.
+export const maxDuration = 30;
+
 const DESCRIPTION =
   "Jahon futbolining eng muhim yangiliklari — qisqa, tushunarli va o'zbek tilida. Premyer-liga, La Liga, Chempionlar ligasi, transferlar va O'zbekiston futboli.";
 

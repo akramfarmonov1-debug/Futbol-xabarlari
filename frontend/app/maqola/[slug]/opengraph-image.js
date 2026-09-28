@@ -5,6 +5,7 @@ import { Ball } from "../../../lib/pwa-icon";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "Futbol Xabar maqolasi";
+export const maxDuration = 30; // qarang: app/layout.js
 
 export default async function OgImage({ params }) {
   const { slug } = await params;
