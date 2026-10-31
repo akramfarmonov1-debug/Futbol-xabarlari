@@ -14,6 +14,7 @@ Muntazam ishlashi uchun cron'ga qo'ying, masalan har soatda:
 import re
 from datetime import datetime
 
+from . import cache
 from .config import (
     AI_PROVIDER,
     AUTO_PUBLISH,
@@ -425,6 +426,8 @@ def _run_pipeline(per_feed: int = 5) -> int:
                     LAST_RUN["last_telegram_error"] = format_error(error)
                     print(f"   ✗ Telegram xatosi: {error}")
 
+        if saved > 0:
+            cache.clear()
         mode = (
             "90+ qat'iy gate: moslari avto, qolganlari pending"
             if AUTO_PUBLISH

@@ -86,6 +86,8 @@ export default function ArticleCard({ article, compact = false }) {
           <div className="flex items-center gap-2 text-slate-500 text-xs">
             <span>{date}</span>
             <span>•</span>
+            <span>{readingMinutes} daq</span>
+            <span>•</span>
             <span className="flex items-center gap-1 font-medium text-slate-400">
               <span>👁</span>
               <span>{formatViews(article.views_count)}</span>

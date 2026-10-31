@@ -16,3 +16,6 @@ out/
 # Google Cloud service-account maxfiy fayllari
 *-sa.json
 google-credentials.json
+
+# Agent lokal tarix fayli
+.agent_chat_history.json

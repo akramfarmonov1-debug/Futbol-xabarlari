@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from ..config import ADMIN_TOKEN
 from ..database import get_db
+from ..deps import require_admin
 from ..services.push_service import (
     get_subscribers_count,
+    is_valid_subscription_endpoint,
     remove_subscription,
     save_subscription,
     send_web_push,
@@ -34,13 +35,14 @@ def subscribe_push(
     db: Session = Depends(get_db),
 ):
     """Brauzerdan kelgan push obunasini saqlash."""
-    if not data.endpoint:
-        raise HTTPException(status_code=400, detail="Endpoint bo'sh bo'lishi mumkin emas")
+    endpoint = (data.endpoint or "").strip()
+    if not is_valid_subscription_endpoint(endpoint):
+        raise HTTPException(status_code=400, detail="Yaroqsiz push endpoint")
 
     user_agent = request.headers.get("user-agent", "")
     sub = save_subscription(
         db,
-        endpoint=data.endpoint,
+        endpoint=endpoint,
         p256dh=data.p256dh or "",
         auth=data.auth or "",
         user_agent=user_agent,
@@ -69,16 +71,12 @@ def push_status(db: Session = Depends(get_db)):
     return {"status": "ok", "subscribers_count": count}
 
 
-@router.post("/broadcast")
+@router.post("/broadcast", dependencies=[Depends(require_admin)])
 def admin_broadcast_push(
     payload: SendPushRequest,
     db: Session = Depends(get_db),
-    x_admin_token: str | None = Header(default=None),
 ):
     """Admin uchun: barcha obunachilarga bildirishnoma yuborish."""
-    if x_admin_token != ADMIN_TOKEN:
-        raise HTTPException(status_code=401, detail="Noto'g'ri admin tokeni")
-
     res = send_web_push(
         db,
         title=payload.title,

@@ -81,6 +81,7 @@ def article_text(article: dict) -> str:
 
 
 def article_buttons(article: dict) -> InlineKeyboardMarkup:
+    safe_slug = (article.get("slug") or "")[:58]
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -96,7 +97,7 @@ def article_buttons(article: dict) -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text="⭐ Saqlash",
-                    callback_data=f"save:{article['slug']}",
+                    callback_data=f"save:{safe_slug}",
                 )
             ],
         ]
@@ -161,33 +162,48 @@ async def cmd_sayt(message: Message):
 @dp.message(Command("bugun"))
 @dp.message(F.text == "⚽ Bugungi o'yinlar")
 async def cmd_scores(message: Message):
-    data = await api_get("/api/scores")
-    if not data or not data.get("matches"):
+    groups = await api_get("/api/scores/today")
+    if not isinstance(groups, list) or not groups:
         await message.answer("⚽ Bugunga belgilangan asosiy o‘yinlar topilmadi.")
         return
 
-    matches = data.get("matches", [])
     lines = ["⚽ <b>Bugungi futbol o‘yinlari va hisoblar:</b>\n"]
-    
-    for m in matches[:15]:
-        home = m.get("home_team", "")
-        away = m.get("away_team", "")
-        home_score = m.get("home_score")
-        away_score = m.get("away_score")
-        status = m.get("status", "")
-        league = m.get("league", "")
+    shown = 0
 
-        score_str = f"{home_score} : {away_score}" if home_score is not None and away_score is not None else "vs"
-        status_icon = "🔴 LIVE" if status == "IN_PLAY" else "🏁 FT" if status == "FINISHED" else "⏰"
+    for group in groups:
+        comp_name = html.escape(str(group.get("competition") or "Turnir"))
+        matches = group.get("matches") or []
+        if not matches:
+            continue
+        lines.append(f"🏆 <b>{comp_name}</b>")
+        for m in matches[:6]:
+            home = html.escape(str(m.get("home") or m.get("home_team") or "?"))
+            away = html.escape(str(m.get("away") or m.get("away_team") or "?"))
+            home_score = m.get("home_score")
+            away_score = m.get("away_score")
+            status = m.get("status") or ""
+            is_live = bool(m.get("is_live"))
 
-        lines.append(f"• <b>{home}</b> {score_str} <b>{away}</b> ({status_icon})")
-        if league:
-            lines.append(f"  <i>🏆 {league}</i>")
+            score_str = (
+                f"{home_score} : {away_score}"
+                if home_score is not None and away_score is not None
+                else "vs"
+            )
+            status_icon = "🔴 LIVE" if is_live else f"⏰ {html.escape(str(status))}" if status else "⏰"
+            lines.append(f"• <b>{home}</b> {score_str} <b>{away}</b> ({status_icon})")
+            shown += 1
+        lines.append("")
+        if shown >= 15:
+            break
+
+    if shown == 0:
+        await message.answer("⚽ Bugunga belgilangan asosiy o‘yinlar topilmadi.")
+        return
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text="📊 Saytda barcha hisoblar", url=f"{SITE_URL}/jadval")]]
     )
-    await message.answer("\n".join(lines), parse_mode="HTML", reply_markup=keyboard)
+    await message.answer("\n".join(lines).strip(), parse_mode="HTML", reply_markup=keyboard)
 
 
 # ===================== 🏆 JADVAL / STANDINGS =====================
@@ -204,7 +220,7 @@ LEAGUE_BUTTONS = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(text="🏆 Chempionlar ligasi", callback_data="table:CL"),
-            InlineKeyboardButton(text="🇺🇿 O'zbekiston Superligasi", callback_data="table:UZ"),
+            InlineKeyboardButton(text="🇺🇿 O'zbekiston Superligasi", callback_data="table:UZB"),
         ],
     ]
 )
@@ -218,27 +234,29 @@ async def cmd_standings(message: Message):
 @dp.callback_query(F.data.startswith("table:"))
 async def handle_table_callback(callback: CallbackQuery):
     league_code = callback.data.split(":", 1)[1]
-    data = await api_get(f"/api/scores/standings?league={league_code}")
+    if league_code == "UZ":
+        league_code = "UZB"
+    data = await api_get(f"/api/scores/standings/{league_code}")
     await callback.answer()
 
-    if not data or not data.get("table"):
+    if not isinstance(data, dict) or not data.get("table"):
         await callback.message.answer("Ushbu liga bo‘yicha jadval ma'lumotlari hozircha yangilanmoqda.")
         return
 
-    league_name = data.get("league", "Turnir jadvali")
+    league_name = html.escape(str(data.get("competition") or data.get("league") or "Turnir jadvali"))
     table = data.get("table", [])
-    
+
     lines = [f"🏆 <b>{league_name} — Turnir jadvali (Top-8):</b>\n"]
     for row in table[:8]:
         pos = row.get("position", "")
-        name = row.get("team_name", "")
+        name = html.escape(str(row.get("team") or row.get("team_name") or ""))
         pts = row.get("points", "")
         played = row.get("played", "")
         lines.append(f"<b>{pos}. {name}</b> — <b>{pts}</b> ochko ({played} o‘yin)")
 
     link_markup = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📊 Saytda to‘liq jadvalni ko‘rish", url=f"{SITE_URL}/jadval")],
+            [InlineKeyboardButton(text="📊 Saytda to‘liq jadvalni ko‘rish", url=f"{SITE_URL}/jadval?turnir={league_code}")],
             [InlineKeyboardButton(text="🔙 Boshqa ligalar", callback_data="back_leagues")],
         ]
     )
@@ -257,30 +275,37 @@ async def handle_back_leagues(callback: CallbackQuery):
 @dp.message(F.text == "🇺🇿 Legionerlarimiz")
 async def cmd_legionnaires(message: Message):
     data = await api_get("/api/legionnaires")
-    if not data or not data.get("legionnaires"):
+    players = data if isinstance(data, list) else (data.get("legionnaires", []) if isinstance(data, dict) else [])
+    if not players:
         await message.answer("🇺🇿 Legionerlarimiz haqidagi ma'lumotlar yangilanmoqda.")
         return
 
-    players = data.get("legionnaires", [])
     lines = ["🇺🇿 <b>O‘zbekistonlik legionerlar joriy holati:</b>\n"]
 
     for p in players:
-        name = p.get("name", "")
-        club = p.get("club", "")
-        league = p.get("league", "")
-        status = p.get("status", "")
-        next_match = p.get("next_match")
+        flag = p.get("country_flag") or "⚽"
+        name = html.escape(str(p.get("name") or ""))
+        club = html.escape(str(p.get("club") or ""))
+        league = html.escape(str(p.get("league") or ""))
+        position = html.escape(str(p.get("position") or ""))
+        market_value = html.escape(str(p.get("market_value") or ""))
+        recent = p.get("recent_articles") or []
 
-        lines.append(f"⭐️ <b>{name}</b> ({club} / {league})")
-        lines.append(f"   ℹ️ <i>{status}</i>")
-        if next_match:
-            lines.append(f"   📅 Keyingi o‘yin: <b>{next_match.get('opponent')}</b> ({next_match.get('date')})")
+        meta = " • ".join(part for part in (position, market_value) if part)
+        lines.append(f"{flag} <b>{name}</b> ({club} — {league})")
+        if meta:
+            lines.append(f"   ℹ️ <i>{meta}</i>")
+        if recent:
+            latest = recent[0]
+            art_title = html.escape(str(latest.get("title") or "So'nggi xabar"))
+            art_slug = latest.get("slug") or ""
+            lines.append(f"   📰 <a href=\"{SITE_URL}/maqola/{art_slug}\">{art_title}</a>")
         lines.append("")
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text="🇺🇿 Saytda legionerlar sahifasi", url=f"{SITE_URL}/legionerlar")]]
     )
-    await message.answer("\n".join(lines), parse_mode="HTML", reply_markup=keyboard)
+    await message.answer("\n".join(lines).strip(), parse_mode="HTML", reply_markup=keyboard, disable_web_page_preview=True)
 
 
 # ===================== 🔥 TOP / NEWS =====================
@@ -326,7 +351,10 @@ async def save_article(callback: CallbackQuery):
     slug = callback.data.split(":", 1)[1]
     try:
         article = await api_get(f"/api/news/{slug}")
-        storage.save_article(callback.message.chat.id, slug, article["title"])
+        if not article:
+            await callback.answer("Maqola topilmadi", show_alert=True)
+            return
+        storage.save_article(callback.message.chat.id, article.get("slug") or slug, article["title"])
         await callback.answer("⭐ Saqlandi!")
     except Exception:
         await callback.answer("Xatolik yuz berdi", show_alert=True)

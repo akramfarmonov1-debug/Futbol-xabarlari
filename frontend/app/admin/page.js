@@ -17,6 +17,13 @@ export default function AdminPage() {
   const [stats, setStats] = useState(null);
   const [ingestion, setIngestion] = useState([]);
   const [message, setMessage] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    summary: "",
+    content: "",
+    importance: 3,
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem("admin_token");
@@ -42,7 +49,10 @@ export default function AdminPage() {
         localStorage.removeItem("admin_token");
         throw new Error("Token noto'g'ri");
       }
-      if (!res.ok) throw new Error((await res.json()).detail || "Xatolik");
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.detail || `Server xatosi (${res.status})`);
+      }
       return res.json();
     },
     [token],
@@ -70,8 +80,32 @@ export default function AdminPage() {
 
   async function action(path, method = "POST") {
     try {
-      await api(path, { method });
-      setMessage("✅ Bajarildi");
+      const res = await api(path, { method });
+      setMessage(res?.xabar ? `✅ ${res.xabar}` : "✅ Bajarildi");
+      load();
+    } catch (error) {
+      setMessage(`❌ ${error.message}`);
+    }
+  }
+
+  function startEdit(article) {
+    setEditingId(article.id);
+    setEditForm({
+      title: article.title || "",
+      summary: article.summary || "",
+      content: article.content || "",
+      importance: article.importance || 3,
+    });
+  }
+
+  async function saveEdit(articleId) {
+    try {
+      await api(`/api/admin/articles/${articleId}`, {
+        method: "PUT",
+        body: JSON.stringify(editForm),
+      });
+      setEditingId(null);
+      setMessage("✅ Maqola yangilandi");
       load();
     } catch (error) {
       setMessage(`❌ ${error.message}`);
@@ -106,15 +140,23 @@ export default function AdminPage() {
     <div className="py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">🛠 Admin panel</h1>
-        <button
-          onClick={() => {
-            localStorage.removeItem("admin_token");
-            setLoggedIn(false);
-          }}
-          className="text-sm text-slate-400 hover:text-white"
-        >
-          Chiqish
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => action("/api/admin/digest/send")}
+            className="rounded-lg border border-emerald-600/50 bg-emerald-950/40 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-900/50"
+          >
+            📋 Kunlik dayjestni yuborish
+          </button>
+          <button
+            onClick={() => {
+              localStorage.removeItem("admin_token");
+              setLoggedIn(false);
+            }}
+            className="text-sm text-slate-400 hover:text-white"
+          >
+            Chiqish
+          </button>
+        </div>
       </div>
 
       {stats && (
@@ -228,6 +270,12 @@ export default function AdminPage() {
                 </button>
               )}
               <button
+                onClick={() => (editingId === article.id ? setEditingId(null) : startEdit(article))}
+                className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300 hover:border-slate-500"
+              >
+                ✏️ {editingId === article.id ? "Bekor qilish" : "Tahrirlash"}
+              </button>
+              <button
                 onClick={() => action(`/api/admin/articles/${article.id}`, "DELETE")}
                 className="rounded-lg bg-red-900 px-3 py-1.5 hover:bg-red-800"
               >
@@ -242,6 +290,58 @@ export default function AdminPage() {
                 🔗 Manba
               </a>
             </div>
+            {editingId === article.id && (
+              <div className="mt-4 space-y-3 rounded-xl border border-slate-800 bg-slate-950/80 p-4 text-sm">
+                <div>
+                  <label className="mb-1 block text-xs text-slate-400">Sarlavha</label>
+                  <input
+                    type="text"
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-slate-400">Qisqa xulosa</label>
+                  <textarea
+                    rows={2}
+                    value={editForm.summary}
+                    onChange={(e) => setEditForm({ ...editForm, summary: e.target.value })}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-green-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-slate-400">Asosiy matn</label>
+                  <textarea
+                    rows={5}
+                    value={editForm.content}
+                    onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 outline-none focus:border-green-500"
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs text-slate-400">Muhimlik (1–5):</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={editForm.importance}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, importance: Number(e.target.value) || 3 })
+                      }
+                      className="w-16 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-center outline-none focus:border-green-500"
+                    />
+                  </div>
+                  <button
+                    onClick={() => saveEdit(article.id)}
+                    className="rounded-lg bg-green-600 px-4 py-1.5 font-semibold hover:bg-green-500"
+                  >
+                    💾 Saqlash
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

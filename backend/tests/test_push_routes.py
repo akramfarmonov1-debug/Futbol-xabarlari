@@ -66,6 +66,19 @@ class TestPushRoutes(unittest.TestCase):
         status_resp2 = self.client.get("/api/push/status")
         self.assertEqual(status_resp2.json()["subscribers_count"], 0)
 
+    def test_subscribe_rejects_ssrf_or_non_https_endpoints(self):
+        for unsafe_url in [
+            "http://fcm.googleapis.com/fcm/send/token",
+            "https://localhost:8000/api/admin",
+            "https://127.0.0.1/internal",
+            "https://169.254.169.254/latest/meta-data/",
+        ]:
+            resp = self.client.post(
+                "/api/push/subscribe",
+                json={"endpoint": unsafe_url},
+            )
+            self.assertEqual(resp.status_code, 400, msg=f"Should reject {unsafe_url}")
+
 
 if __name__ == "__main__":
     unittest.main()

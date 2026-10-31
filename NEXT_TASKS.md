@@ -5,13 +5,13 @@ Keyingi maqsad: **9.5+/10 darajadagi ishonchli va tahrirlangan futbol media mahs
 
 ## 1. Dublikat xabarlarni filtrlash — eng muhim
 
-- [ ] AI maqola yaratishidan oldin yangi xabarni mavjud maqolalar bilan solishtirish.
-- [ ] Sarlavha, asosiy shaxslar, klublar, turnir va voqea bo‘yicha o‘xshashlikni aniqlash.
-- [ ] Bir voqea haqidagi bir nechta RSS xabaridan eng to‘liq va ishonchli manbani tanlash.
-- [ ] Bir xil mazmundagi maqolani qayta chop etmaslik.
-- [ ] Haqiqiy yangi rivojlanish bo‘lsa, uni dublikat emas, yangilanish sifatida qabul qilish.
-- [ ] O‘tkazib yuborilgan xabar sababini logga yozish: `duplicate`, `low_quality`, `non_football` yoki `unsafe`.
-- [ ] FIFA investitsiyasi va diskriminatsiya mavzulariga o‘xshash takroriy maqolalar bilan test qilish.
+- [x] AI maqola yaratishidan oldin yangi xabarni mavjud maqolalar bilan solishtirish.
+- [x] Sarlavha, asosiy shaxslar, klublar, turnir va voqea bo‘yicha o‘xshashlikni aniqlash.
+- [x] Bir voqea haqidagi bir nechta RSS xabaridan eng to‘liq va ishonchli manbani tanlash.
+- [x] Bir xil mazmundagi maqolani qayta chop etmaslik.
+- [x] Haqiqiy yangi rivojlanish bo‘lsa, uni dublikat emas, yangilanish sifatida qabul qilish.
+- [x] O‘tkazib yuborilgan xabar sababini logga yozish: `duplicate`, `low_quality`, `non_football` yoki `unsafe`.
+- [x] FIFA investitsiyasi va diskriminatsiya mavzulariga o‘xshash takroriy maqolalar bilan test qilish.
 
 ### Bajarilgan deb hisoblash mezoni
 
@@ -21,13 +21,13 @@ Keyingi maqsad: **9.5+/10 darajadagi ishonchli va tahrirlangan futbol media mahs
 
 ## 2. O‘zbekcha tahrir sifatini kuchaytirish
 
-- [ ] AI promptiga tabiiy, qisqa va jurnalistik o‘zbek tili talablarini qat’iy kiritish.
-- [ ] Klub, futbolchi va turnir nomlari uchun yagona lug‘at yaratish.
-- [ ] `muhokama/muxokama`, `Reynjers/Rangers`, `Vrekshem/Wrexham` kabi turli yozilishlarni birxillashtirish.
-- [ ] Noqulay yoki mantiqan zid jumlalarni avtomatik tekshirish.
-- [ ] Juda uzun sarlavhalarni maqola yaratilishidayoq qisqartirish.
-- [ ] Sarlavha va matnda clickbait, sun’iy ibora hamda ortiqcha takrorlarni cheklash.
-- [ ] Sifatsiz matnni chop etmasdan qayta generatsiya qilish.
+- [x] AI promptiga tabiiy, qisqa va jurnalistik o‘zbek tili talablarini qat’iy kiritish.
+- [x] Klub, futbolchi va turnir nomlari uchun yagona lug‘at yaratish.
+- [x] `muhokama/muxokama`, `Reynjers/Rangers`, `Vrekshem/Wrexham` kabi turli yozilishlarni birxillashtirish.
+- [x] Noqulay yoki mantiqan zid jumlalarni avtomatik tekshirish.
+- [x] Juda uzun sarlavhalarni maqola yaratilishidayoq qisqartirish.
+- [x] Sarlavha va matnda clickbait, sun’iy ibora hamda ortiqcha takrorlarni cheklash.
+- [x] Sifatsiz matnni chop etmasdan qayta generatsiya qilish.
 
 ### Bajarilgan deb hisoblash mezoni
 
@@ -37,10 +37,10 @@ Keyingi maqsad: **9.5+/10 darajadagi ishonchli va tahrirlangan futbol media mahs
 
 ## 3. Planshet navigatsiyasini tuzatish
 
-- [ ] 640–1024 px ekranlarda yuqori kategoriya menyusining sahifani yon tomonga kengaytirishini to‘xtatish.
-- [ ] Menyuni konteyner ichida gorizontal aylantiriladigan qilish yoki elementlarni mos ravishda qisqartirish.
-- [ ] Sahifaning o‘zida gorizontal scrollbar chiqmasligini ta’minlash.
-- [ ] 390, 640, 678, 768, 1024 va 1440 px kengliklarda tekshirish.
+- [x] 640–1024 px ekranlarda yuqori kategoriya menyusining sahifani yon tomonga kengaytirishini to‘xtatish.
+- [x] Menyuni konteyner ichida gorizontal aylantiriladigan qilish yoki elementlarni mos ravishda qisqartirish.
+- [x] Sahifaning o‘zida gorizontal scrollbar chiqmasligini ta’minlash.
+- [x] 390, 640, 678, 768, 1024 va 1440 px kengliklarda tekshirish.
 
 ### Bajarilgan deb hisoblash mezoni
 
@@ -50,17 +50,17 @@ Keyingi maqsad: **9.5+/10 darajadagi ishonchli va tahrirlangan futbol media mahs
 
 ## 4. Maqola sahifasini boyitish
 
-- [ ] Har bir maqolaga 3–5 ta o‘xshash xabar qo‘shish.
-- [ ] “Oxirgi yangilangan” sanasini ko‘rsatish.
-- [ ] Mas’ul muharrir yoki “Futbol Xabar tahririyati” muallifligini ko‘rsatish.
-- [ ] Tahrir va xatolarni tuzatish siyosati sahifasini yaratish.
-- [ ] Telegramdan tashqari havolani nusxalash tugmasini qo‘shish.
+- [x] Har bir maqolaga 3–5 ta o‘xshash xabar qo‘shish.
+- [x] “Oxirgi yangilangan” sanasini ko‘rsatish.
+- [x] Mas’ul muharrir yoki “Futbol Xabar tahririyati” muallifligini ko‘rsatish.
+- [x] Tahrir va xatolarni tuzatish siyosati sahifasini yaratish.
+- [x] Telegramdan tashqari havolani nusxalash tugmasini qo‘shish.
 
 ## 5. Reklama bloklarini production holatiga keltirish
 
-- [ ] Reklama provayderi ulanmagan bo‘lsa, placeholder bloklarini foydalanuvchidan yashirish.
-- [ ] Reklama yoqilganda layout siljishini oldini olish uchun joyni oldindan band qilish.
-- [ ] Mobil va desktop reklama o‘lchamlarini alohida tekshirish.
+- [x] Reklama provayderi ulanmagan bo‘lsa, placeholder bloklarini foydalanuvchidan yashirish.
+- [x] Reklama yoqilganda layout siljishini oldini olish uchun joyni oldindan band qilish.
+- [x] Mobil va desktop reklama o‘lchamlarini alohida tekshirish.
 
 ## 6. SEO va tezlikni yakuniy tasdiqlash
 
@@ -83,11 +83,11 @@ Keyingi maqsad: **9.5+/10 darajadagi ishonchli va tahrirlangan futbol media mahs
 
 ## Yakuniy qabul mezonlari
 
-- [ ] Backend pipeline xatosiz ishlaydi.
-- [ ] Bir voqea qayta-qayta chop etilmaydi.
-- [ ] Yangi matnlarda sezilarli imlo va AI uslubidagi xatolar yo‘q.
-- [ ] Barcha asosiy ekran kengliklarida gorizontal overflow yo‘q.
-- [ ] Frontend production build muvaffaqiyatli.
-- [ ] Jonli sayt, qidiruv, jadval, RSS va maqola sahifalari ishlaydi.
-- [ ] Brauzer konsolida yangi xato yo‘q.
+- [x] Backend pipeline xatosiz ishlaydi.
+- [x] Bir voqea qayta-qayta chop etilmaydi.
+- [x] Yangi matnlarda sezilarli imlo va AI uslubidagi xatolar yo‘q.
+- [x] Barcha asosiy ekran kengliklarida gorizontal overflow yo‘q.
+- [x] Frontend production build muvaffaqiyatli.
+- [x] Jonli sayt, qidiruv, jadval, RSS va maqola sahifalari ishlaydi.
+- [x] Brauzer konsolida yangi xato yo‘q.
 

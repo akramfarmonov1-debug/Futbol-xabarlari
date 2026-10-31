@@ -31,7 +31,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://futbolxabar:${POSTGRES_PASSWORD:-futbolxabar_parol}@db:5432/futbolxabar
       AI_PROVIDER: ${AI_PROVIDER:-gemini}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-admin-token-o'zgartiring}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -67,7 +67,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://futbolxabar:${POSTGRES_PASSWORD:-futbolxabar_parol}@db:5432/futbolxabar
       AI_PROVIDER: ${AI_PROVIDER:-gemini}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-flash-lite}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}
@@ -111,8 +111,10 @@ services:
     restart: unless-stopped
 
   bot:
-    build: ./bot
+    build: ./backend
+    command: ["python", "-m", "app.bot.bot"]
     environment:
+      DATABASE_URL: postgresql+psycopg2://futbolxabar:${POSTGRES_PASSWORD:-futbolxabar_parol}@db:5432/futbolxabar
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       API_URL: http://backend:8000
       SITE_URL: ${SITE_URL:-http://localhost:3000}
@@ -120,7 +122,10 @@ services:
     volumes:
       - botdata:/app/data
     depends_on:
-      - backend
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_started
     restart: unless-stopped
 
 volumes:

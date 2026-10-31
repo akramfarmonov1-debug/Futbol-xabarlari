@@ -190,9 +190,14 @@ def search_news(q: str, db: Session = Depends(get_db), limit: int = Query(defaul
 
     # Har xil tutuq belgilari va shakllar
     normalized = raw_query.replace("ʻ", "'").replace("’", "'").replace("`", "'")
-    patterns = {f"%{raw_query}%", f"%{normalized}%"}
-    patterns.add(f"%{normalized.replace('\'', 'ʻ')}%")
-    patterns.add(f"%{normalized.replace('\'', '’')}%")
+    with_okina = normalized.replace("'", "ʻ")
+    with_curly = normalized.replace("'", "’")
+    patterns = {
+        f"%{raw_query}%",
+        f"%{normalized}%",
+        f"%{with_okina}%",
+        f"%{with_curly}%",
+    }
 
     filters = []
     for pat in patterns:
@@ -335,6 +340,13 @@ def article_detail(slug: str, db: Session = Depends(get_db)):
         .filter(Article.slug == slug)
         .first()
     )
+    if not article and len(slug) >= 50:
+        article = (
+            published(db)
+            .options(joinedload(Article.category))
+            .filter(Article.slug.startswith(slug))
+            .first()
+        )
     if not article:
         raise HTTPException(status_code=404, detail="Maqola topilmadi")
     return article

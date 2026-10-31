@@ -6,6 +6,7 @@ from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from .. import cache
 from ..database import get_db
 from ..deps import require_admin
 from ..models import Article, ArticleQuality, Category, IngestionDecision
@@ -53,6 +54,7 @@ def update_article(article_id: int, data: ArticleUpdate, db: Session = Depends(g
         setattr(article, field, value)
     db.commit()
     db.refresh(article)
+    cache.clear()
     return article
 
 
@@ -72,6 +74,7 @@ def approve_article(article_id: int, db: Session = Depends(get_db)):
             print(f"  ⚠ Admin tasdiqlashda Telegram xatosi: {error}")
     db.commit()
     db.refresh(article)
+    cache.clear()
     return article
 
 
@@ -83,6 +86,7 @@ def reject_article(article_id: int, db: Session = Depends(get_db)):
         article.quality.decision = "rejected_manual"
     db.commit()
     db.refresh(article)
+    cache.clear()
     return article
 
 
@@ -120,6 +124,7 @@ def delete_article(article_id: int, db: Session = Depends(get_db)):
     article = get_article(db, article_id)
     db.delete(article)
     db.commit()
+    cache.clear()
     return {"ok": True}
 
 

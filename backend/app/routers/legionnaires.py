@@ -1,11 +1,12 @@
 """Legionerlar API — O'zbekistonlik xorijdagi futbolchilar ma'lumotlari."""
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .. import cache
 from ..database import get_db
+from ..deps import require_admin
 from ..services import legionnaires
 from ..services.legionnaires_alert import broadcast_legionnaire_alert
 
@@ -45,7 +46,7 @@ def legionnaire_detail(slug: str, db: Session = Depends(get_db)):
     return result
 
 
-@router.post("/alert")
+@router.post("/alert", dependencies=[Depends(require_admin)])
 def send_legionnaire_alert(
     payload: LegionnaireAlertRequest,
     db: Session = Depends(get_db),

@@ -1,10 +1,44 @@
+import ipaddress
 import json
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urlparse
+
 import httpx
 from sqlalchemy.orm import Session
 
 from ..models import PushSubscription
+
+
+def is_deliverable_push_url(endpoint: str) -> bool:
+    """Faqat xavfsiz tashqi HTTPS Web Push URL manzillariga tarmoq so'rovi yuborishga ruxsat beradi (SSRF himoyasi)."""
+    if not endpoint or not endpoint.startswith("https://"):
+        return False
+    try:
+        parsed = urlparse(endpoint)
+    except Exception:
+        return False
+    host = (parsed.hostname or "").strip().lower()
+    if not host or host in {"localhost", "0.0.0.0"} or host.endswith((".local", ".internal")):
+        return False
+    try:
+        ip = ipaddress.ip_address(host)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            return False
+    except ValueError:
+        # Domen nomi bo'lsa kamida bitta nuqta bo'lishi kerak
+        if "." not in host:
+            return False
+    return True
+
+
+def is_valid_subscription_endpoint(endpoint: str) -> bool:
+    """Obuna endpointi haqiqiy HTTPS Web Push URL yoki brauzer fallback identifikatori ekanini tekshiradi."""
+    if not endpoint:
+        return False
+    if endpoint.startswith("browser_"):
+        return len(endpoint) <= 120
+    return is_deliverable_push_url(endpoint)
 
 
 def save_subscription(
@@ -74,6 +108,9 @@ def send_web_push(
 
     with httpx.Client(timeout=10) as client:
         for sub in subscriptions:
+            if not is_deliverable_push_url(sub.endpoint):
+                failed_count += 1
+                continue
             try:
                 # Oddiy push endpointga xabar yuborish
                 resp = client.post(

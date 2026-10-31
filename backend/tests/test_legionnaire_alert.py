@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -36,6 +37,7 @@ class TestLegionnaireAlert(unittest.TestCase):
         self.db.close()
         app.dependency_overrides.clear()
 
+    @patch("app.deps.ADMIN_TOKEN", "test-admin-secret")
     def test_send_and_dedup_alert(self):
         payload = {
             "event_key": "goal:husanov:lens-psg:42",
@@ -50,13 +52,19 @@ class TestLegionnaireAlert(unittest.TestCase):
             "minute": "42'",
         }
 
+        # 0. Without admin token -> 401
+        unauth = self.client.post("/api/legionnaires/alert", json=payload)
+        self.assertEqual(unauth.status_code, 401)
+
+        headers = {"X-Admin-Token": "test-admin-secret"}
+
         # 1. First alert -> sent
-        resp = self.client.post("/api/legionnaires/alert", json=payload)
+        resp = self.client.post("/api/legionnaires/alert", json=payload, headers=headers)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["status"], "sent")
 
         # 2. Duplicate alert with same event_key -> already_sent
-        resp2 = self.client.post("/api/legionnaires/alert", json=payload)
+        resp2 = self.client.post("/api/legionnaires/alert", json=payload, headers=headers)
         self.assertEqual(resp2.status_code, 200)
         self.assertEqual(resp2.json()["status"], "already_sent")
 
