@@ -57,6 +57,17 @@ export const metadata = {
     title: `${SITE_NAME} — Jahon futboli yangiliklari`,
     description: DESCRIPTION,
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   appleWebApp: {
     capable: true,
     title: "Futbol Xabar",

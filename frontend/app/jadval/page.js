@@ -2,13 +2,55 @@ import Image from "next/image";
 import Link from "next/link";
 import ApiUnavailable from "../../components/ApiUnavailable";
 import { apiGet } from "../../lib/api";
+import { SITE_NAME, SITE_URL } from "../../lib/site";
 
-export const metadata = {
-  title: "Turnir jadvallari",
-  description:
-    "O'zbekiston Superligasi, Angliya Premyer-ligasi, La Liga, Seriya A, Bundesliga va Chempionlar ligasi jadvallari.",
-  alternates: { canonical: "/jadval" },
+const LEAGUE_SEO_NAMES = {
+  UZB: "O‘zbekiston Superligasi",
+  PL: "Angliya Premyer-ligasi",
+  PD: "Ispaniya La Ligasi",
+  SA: "Italiya A Seriyasi",
+  BL1: "Germaniya Bundesligasi",
+  FL1: "Fransiya 1-ligasi",
+  CL: "UEFA Chempionlar ligasi",
 };
+
+export async function generateMetadata({ searchParams }) {
+  const { turnir } = await searchParams;
+  const code = typeof turnir === "string" ? turnir.toUpperCase() : "";
+  const leagueName = LEAGUE_SEO_NAMES[code];
+
+  if (leagueName) {
+    const title = `${leagueName} turnir jadvali — ochkolar va o‘rinlar`;
+    const description = `${leagueName} joriy mavsum turnir jadvali: jamoalar o‘rni, o‘yinlar soni, g‘alabalar, to‘plar nisbati va ochkolar — ${SITE_NAME}.`;
+    const canonical = `/jadval?turnir=${code}`;
+    return {
+      title,
+      description,
+      alternates: { canonical },
+      openGraph: {
+        title,
+        description,
+        url: `${SITE_URL}${canonical}`,
+        siteName: SITE_NAME,
+      },
+    };
+  }
+
+  const defaultTitle = "Turnir jadvallari — Superliga, APL, La Liga, Chempionlar ligasi";
+  const defaultDesc =
+    "O'zbekiston Superligasi, Angliya Premyer-ligasi, La Liga, Seriya A, Bundesliga va Chempionlar ligasi turnir jadvallari.";
+  return {
+    title: defaultTitle,
+    description: defaultDesc,
+    alternates: { canonical: "/jadval" },
+    openGraph: {
+      title: defaultTitle,
+      description: defaultDesc,
+      url: `${SITE_URL}/jadval`,
+      siteName: SITE_NAME,
+    },
+  };
+}
 
 export const revalidate = 3600;
 

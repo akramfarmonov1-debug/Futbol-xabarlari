@@ -21,9 +21,35 @@ export const metadata = {
 export default async function LegionnairesPage() {
   const data = await apiGetPrimary("/api/legionnaires");
   const legionnaires = data || [];
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "O‘zbekistonlik legioner futbolchilar",
+    description:
+      "Xorijiy chempionatlarda to‘p surayotgan o‘zbekistonlik futbolchilar ro‘yxati.",
+    itemListElement: legionnaires.map((player, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "Person",
+        name: player.name,
+        jobTitle: player.position || "Futbolchi",
+        nationality: "Uzbekistan",
+        memberOf: player.club
+          ? { "@type": "SportsTeam", name: player.club }
+          : undefined,
+      },
+    })),
+  };
 
   return (
     <div className="py-6 sm:py-10">
+      {legionnaires.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       {/* Header */}
       <div className="mb-8 rounded-2xl border border-slate-900 bg-gradient-to-br from-slate-950 via-slate-900/50 to-slate-950 p-6 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-4">

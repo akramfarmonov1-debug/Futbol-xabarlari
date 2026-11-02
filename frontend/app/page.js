@@ -22,6 +22,9 @@ export default async function HomePage() {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+      <h1 className="sr-only">
+        Futbol Xabar — Jahon va O&apos;zbekiston futboli yangiliklari o&apos;zbek tilida
+      </h1>
       {/* Main Content Area */}
       <div className="space-y-8">
         {/* Live Scores (Mobile only, placed at the top) */}
@@ -66,9 +69,9 @@ export default async function HomePage() {
                 </div>
 
                 <Link href={`/maqola/${heroArticle.slug}`}>
-                  <h1 className="mb-4 text-2xl sm:text-3xl font-extrabold leading-tight text-white hover:text-emerald-400 transition-colors duration-200">
+                  <h2 className="mb-4 text-2xl sm:text-3xl font-extrabold leading-tight text-white hover:text-emerald-400 transition-colors duration-200">
                     {heroArticle.title}
-                  </h1>
+                  </h2>
                 </Link>
 
                 <p className="mb-5 text-sm sm:text-base leading-relaxed text-slate-400 line-clamp-3">

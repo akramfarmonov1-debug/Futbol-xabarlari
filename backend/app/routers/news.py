@@ -158,7 +158,13 @@ def sitemap_articles(
         query = (
             published(db)
             .outerjoin(Category, Article.category_id == Category.id)
-            .with_entities(Article.slug, Article.title, Article.published_at, Category.slug)
+            .with_entities(
+                Article.slug,
+                Article.title,
+                Article.published_at,
+                Article.updated_at,
+                Category.slug,
+            )
         )
         if hours is not None:
             query = query.filter(
@@ -171,9 +177,10 @@ def sitemap_articles(
                 slug=slug,
                 title=title,
                 published_at=published_at,
+                updated_at=updated_at,
                 category_slug=category_slug,
             )
-            for slug, title, published_at, category_slug in query.order_by(
+            for slug, title, published_at, updated_at, category_slug in query.order_by(
                 Article.published_at.desc()
             ).all()
         ]

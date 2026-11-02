@@ -30,6 +30,7 @@ from .seed import seed_categories
 from .pipeline import LAST_RUN, format_error, run_pipeline
 from .bot.bot import main as run_bot
 from .services.daily_digest import run_digest_loop
+from .utils import safe_print
 
 PIPELINE_STATE = {
     "status": "not_started",
@@ -58,19 +59,19 @@ async def pipeline_loop_task():
         PIPELINE_STATE["status"] = "running"
         PIPELINE_STATE["last_started_at"] = datetime.now(timezone.utc).isoformat()
         try:
-            print("⏳ Running background news pipeline...")
+            safe_print("⏳ Running background news pipeline...")
             loop = asyncio.get_running_loop()
             saved = await loop.run_in_executor(None, run_pipeline, 5)
             PIPELINE_STATE["status"] = "ok"
             PIPELINE_STATE["last_completed_at"] = datetime.now(timezone.utc).isoformat()
             PIPELINE_STATE["last_saved"] = saved
-            print(f"✅ Pipeline done. Saved {saved} articles.")
+            safe_print(f"✅ Pipeline done. Saved {saved} articles.")
         except Exception as e:
             PIPELINE_STATE["status"] = "error"
             PIPELINE_STATE["last_error_at"] = datetime.now(timezone.utc).isoformat()
             PIPELINE_STATE["last_error"] = format_error(e)
             traceback.print_exc()
-            print(f"❌ Pipeline loop error: {e}")
+            safe_print(f"❌ Pipeline loop error: {e}")
 
         interval = int(os.getenv("PIPELINE_INTERVAL", "3600"))
         await asyncio.sleep(interval)
@@ -79,19 +80,19 @@ async def pipeline_loop_task():
 async def bot_task():
     await asyncio.sleep(5)
     try:
-        print("🤖 Starting background Telegram Bot...")
+        safe_print("🤖 Starting background Telegram Bot...")
         await run_bot()
     except Exception as e:
-        print(f"❌ Telegram Bot error: {e}")
+        safe_print(f"❌ Telegram Bot error: {e}")
 
 
 async def digest_task():
     await asyncio.sleep(20)
     try:
-        print("📋 Starting background Daily Digest loop...")
+        safe_print("📋 Starting background Daily Digest loop...")
         await run_digest_loop()
     except Exception as e:
-        print(f"❌ Daily Digest loop error: {e}")
+        safe_print(f"❌ Daily Digest loop error: {e}")
 
 
 def init_database() -> None:
@@ -102,7 +103,7 @@ def init_database() -> None:
         seed_categories(db)
         renamed = backfill_tags(db)
         if renamed:
-            print(f"Teglar kanonik ko'rinishga keltirildi: {renamed} ta xabar.")
+            safe_print(f"Teglar kanonik ko'rinishga keltirildi: {renamed} ta xabar.")
     finally:
         db.close()
 
@@ -114,7 +115,7 @@ def try_init_database() -> bool:
         DATABASE_STATE["status"] = "error"
         DATABASE_STATE["last_error_at"] = datetime.now(timezone.utc).isoformat()
         DATABASE_STATE["last_error"] = format_error(e)
-        print(f"❌ Bazaga ulanib bo'lmadi: {DATABASE_STATE['last_error']}")
+        safe_print(f"❌ Bazaga ulanib bo'lmadi: {DATABASE_STATE['last_error']}")
         return False
     DATABASE_STATE["status"] = "ok"
     DATABASE_STATE["ready_at"] = datetime.now(timezone.utc).isoformat()
@@ -127,12 +128,12 @@ def start_background_tasks(bg_tasks: list) -> None:
     if os.getenv("TELEGRAM_BOT_TOKEN"):
         bg_tasks.append(asyncio.create_task(bot_task()))
     else:
-        print("[INFO] TELEGRAM_BOT_TOKEN is not set. Bot background task will not start.")
+        safe_print("[INFO] TELEGRAM_BOT_TOKEN is not set. Bot background task will not start.")
 
     if DAILY_DIGEST:
         bg_tasks.append(asyncio.create_task(digest_task()))
     else:
-        print("[INFO] DAILY_DIGEST is not enabled. Daily digest task will not start.")
+        safe_print("[INFO] DAILY_DIGEST is not enabled. Daily digest task will not start.")
 
 
 async def database_retry_task(bg_tasks: list) -> None:
@@ -140,7 +141,7 @@ async def database_retry_task(bg_tasks: list) -> None:
     while True:
         await asyncio.sleep(DB_RETRY_INTERVAL)
         if await loop.run_in_executor(None, try_init_database):
-            print("✅ Baza qayta ulandi; fon vazifalari ishga tushirilmoqda.")
+            safe_print("✅ Baza qayta ulandi; fon vazifalari ishga tushirilmoqda.")
             start_background_tasks(bg_tasks)
             return
 

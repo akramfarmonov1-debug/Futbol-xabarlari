@@ -47,6 +47,7 @@ class SitemapContractTests(unittest.TestCase):
         self.assertEqual(len(payload), 1)
         self.assertEqual(payload[0].slug, "chop-etilgan-xabar")
         self.assertEqual(payload[0].category_slug, "transferlar")
+        self.assertIsNotNone(payload[0].updated_at)
         self.assertFalse(hasattr(payload[0], "content"))
         session.close()
 

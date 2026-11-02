@@ -65,12 +65,15 @@ export default async function sitemap() {
       ? sitemapArticles
       : await fetchLegacyArticles();
 
-  const articleUrls = (articles || []).map((article) => ({
-    url: `${SITE_URL}/maqola/${article.slug}`,
-    lastModified: article.published_at ? new Date(article.published_at) : new Date(),
-    changeFrequency: "weekly",
-    priority: 0.7,
-  }));
+  const articleUrls = (articles || []).map((article) => {
+    const lastMod = article.updated_at || article.published_at;
+    return {
+      url: `${SITE_URL}/maqola/${article.slug}`,
+      lastModified: lastMod ? new Date(lastMod) : new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    };
+  });
 
   const categoryUrls = (categories || []).map((cat) => {
     const latestArticle = articles.find(
@@ -88,10 +91,12 @@ export default async function sitemap() {
   });
 
   const staticUrls = [
-    { path: "/jadval", changeFrequency: "hourly", priority: 0.7 },
+    { path: "/legionerlar", changeFrequency: "daily", priority: 0.8 },
+    { path: "/jadval", changeFrequency: "hourly", priority: 0.8 },
     { path: "/haqida", changeFrequency: "monthly", priority: 0.4 },
+    { path: "/tahrir-siyosati", changeFrequency: "monthly", priority: 0.4 },
     { path: "/aloqa", changeFrequency: "monthly", priority: 0.4 },
-    { path: "/maxfiylik", changeFrequency: "monthly", priority: 0.4 },
+    { path: "/maxfiylik", changeFrequency: "monthly", priority: 0.3 },
   ].map(({ path, changeFrequency, priority }) => ({
     url: `${SITE_URL}${path}`,
     changeFrequency,

@@ -91,6 +91,7 @@ class SitemapArticleOut(BaseModel):
     slug: str
     title: str
     published_at: datetime | None
+    updated_at: datetime | None = None
     category_slug: str | None
 
 

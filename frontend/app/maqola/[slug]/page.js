@@ -51,6 +51,9 @@ export async function generateMetadata({ params }) {
       title: socialTitle,
       description,
       publishedTime: article.published_at || article.created_at,
+      modifiedTime:
+        article.updated_at || article.published_at || article.created_at,
+      authors: [SITE_NAME],
       section: article.category?.name,
       tags: article.tags || [],
       images: [{ url: image, alt: article.title }],
@@ -82,8 +85,10 @@ function structuredData(article) {
         datePublished: article.published_at || article.created_at,
         dateModified: article.updated_at || article.published_at || article.created_at,
         inLanguage: "uz",
+        isAccessibleForFree: true,
         articleSection: article.category?.name,
         keywords: (article.tags || []).join(", "),
+        wordCount: (article.content || "").trim().split(/\s+/).filter(Boolean).length,
         author: {
           "@type": "Organization",
           name: SITE_NAME,
