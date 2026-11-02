@@ -130,12 +130,17 @@ BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "http://localhost:8000")
 # Frontend manzili (CORS uchun)
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
 
-# Web Push (VAPID) kalitlari — ixtiyoriy, RFC 8291 shifrlangan push uchun
-VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "").strip()
-VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "").strip()
+# Web Push (VAPID) kalitlari — RFC 8291 shifrlangan push uchun
+DEFAULT_VAPID_PUBLIC = "BAAIXCQfwTqbf5lHjCVq6V_iV3BoOHyNByOIfsUlKgXSDHqErINX6XYvT1hPtXH9qhJ1Nwx6EFXdR_SW8IOBkYM"
+DEFAULT_VAPID_PRIVATE = "Kn6YUQnDgzuzV0C5Y3f6IAgGlUlc0pdv9xRtoUW1STc"
+
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", DEFAULT_VAPID_PUBLIC).strip()
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", DEFAULT_VAPID_PRIVATE).strip()
 VAPID_CLAIMS_SUB = os.getenv(
     "VAPID_CLAIMS_SUB", "mailto:rovshanovazizbek0@gmail.com"
 ).strip()
+AUTO_PUSH = _bool("AUTO_PUSH", "true")
+AUTO_PUSH_MIN_IMPORTANCE = int(os.getenv("AUTO_PUSH_MIN_IMPORTANCE", "4"))
 
 # Neon PostgreSQL compute-hours kvotasini tejash:
 # - /health muvaffaqiyatli DB javobini keshda saqlash muddati (sekund, standart 45 daqiqa)

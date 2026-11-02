@@ -18,6 +18,8 @@ from . import cache
 from .config import (
     AI_PROVIDER,
     AUTO_PUBLISH,
+    AUTO_PUSH,
+    AUTO_PUSH_MIN_IMPORTANCE,
     AUTO_TELEGRAM,
     AUTO_TELEGRAM_MIN_IMPORTANCE,
     IMAGE_GENERATION,
@@ -51,6 +53,7 @@ from .services.runtime_lock import (
     release_runtime_lock,
     try_runtime_lock,
 )
+from .services.push_service import send_web_push
 from .services.telegram import send_to_channel
 from .utils import slugify
 
@@ -410,6 +413,20 @@ def _run_pipeline(per_feed: int = 5) -> int:
             if auto_publish:
                 notify_indexnow_article(article)
                 print("   ✓ Saytga chiqarildi")
+
+                # Web Push bildirishnoma yuborish
+                if AUTO_PUSH and analysis.get("ahamiyati", 3) >= AUTO_PUSH_MIN_IMPORTANCE:
+                    try:
+                        send_web_push(
+                            db,
+                            title=f"⚡ {article.title}",
+                            body=article.summary or article.title,
+                            url=f"/maqola/{article.slug}",
+                            icon="/icon-192",
+                        )
+                        print("   ✓ Brauzerlarga Push yuborildi")
+                    except Exception as push_err:
+                        print(f"   ✗ Web Push xatosi: {push_err}")
 
             # Muhim yangiliklarni Telegram kanalga avtomatik yuborish
             if (

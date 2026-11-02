@@ -18,6 +18,7 @@ from ..schemas import (
 )
 from ..config import AUTO_TELEGRAM, TELEGRAM_BOT_TOKEN
 from ..services.indexnow import notify_indexnow_article
+from ..services.push_service import send_web_push
 from ..services.telegram import send_to_channel
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -77,6 +78,16 @@ def approve_article(article_id: int, db: Session = Depends(get_db)):
     db.refresh(article)
     cache.clear()
     notify_indexnow_article(article)
+    try:
+        send_web_push(
+            db,
+            title=f"⚡ {article.title}",
+            body=article.summary or article.title,
+            url=f"/maqola/{article.slug}",
+            icon="/icon-192",
+        )
+    except Exception as push_err:
+        print(f"  ⚠ Admin tasdiqlashda Web Push xatosi: {push_err}")
     return article
 
 
