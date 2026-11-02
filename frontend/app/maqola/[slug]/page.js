@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdPlaceholder from "../../../components/AdPlaceholder";
+import ArticleCoverImage from "../../../components/ArticleCoverImage";
 import ArticleReactions from "../../../components/ArticleReactions";
 import CopyLinkButton from "../../../components/CopyLinkButton";
 import StandingsWidget from "../../../components/StandingsWidget";
@@ -199,19 +200,8 @@ export default async function ArticlePage({ params }) {
         {article.title}
       </h1>
 
-      {/* Article Cover Image */}
-      {article.image_url && (
-        <div className="relative mb-6 overflow-hidden rounded-2xl border border-slate-900 aspect-video w-full bg-slate-950">
-          <Image
-            src={article.image_url}
-            alt={article.title}
-            fill
-            priority
-            sizes="(max-width: 768px) 100vw, 672px"
-            className="object-cover"
-          />
-        </div>
-      )}
+      {/* Article Cover Image (Safe fallback) */}
+      <ArticleCoverImage src={article.image_url} alt={article.title} />
 
       <div className="mb-6 grid gap-2 rounded-2xl border border-slate-900 bg-slate-950/50 p-4 text-xs text-slate-400 sm:grid-cols-4">
         <div>
