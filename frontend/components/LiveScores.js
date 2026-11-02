@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { apiGet } from "../lib/api";
+import { getClubLogo } from "../lib/clubs";
 
 function timeUz(iso) {
   if (!iso) return "";
