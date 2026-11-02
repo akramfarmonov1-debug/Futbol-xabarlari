@@ -34,7 +34,7 @@ export default async function LegionnairesWidget() {
         {legionnaires.slice(0, 6).map((player) => (
           <Link
             key={player.id}
-            href={`/qidiruv?q=${encodeURIComponent(player.name)}`}
+            href={`/legionerlar/${player.slug}`}
             className="group flex items-center justify-between rounded-xl border border-slate-800/80 bg-slate-900/30 p-3.5 hover:border-sky-500/40 hover:bg-slate-900/60 transition-all duration-200"
           >
             <div className="flex items-center gap-3">

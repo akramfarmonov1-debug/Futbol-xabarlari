@@ -57,10 +57,11 @@ async function fetchLegacyArticles() {
 }
 
 export default async function sitemap() {
-  const [sitemapArticles, categories, trends] = await Promise.all([
+  const [sitemapArticles, categories, trends, legionnaires] = await Promise.all([
     fetchJson(`${API_URL}/api/news/sitemap`),
     fetchJson(`${API_URL}/api/categories`),
     fetchJson(`${API_URL}/api/news/trends?kunlar=30&limit=40`),
+    fetchJson(`${API_URL}/api/legionnaires`),
   ]);
   const articles =
     Array.isArray(sitemapArticles) && sitemapArticles.length > 0
@@ -101,6 +102,15 @@ export default async function sitemap() {
       priority: 0.75,
     }));
 
+  const legionnaireUrls = (legionnaires || [])
+    .map((player) => player?.slug)
+    .filter(Boolean)
+    .map((slug) => ({
+      url: `${SITE_URL}/legionerlar/${slug}`,
+      changeFrequency: "daily",
+      priority: 0.85,
+    }));
+
   const staticUrls = [
     { path: "/legionerlar", changeFrequency: "daily", priority: 0.8 },
     { path: "/jadval", changeFrequency: "hourly", priority: 0.8 },
@@ -128,6 +138,7 @@ export default async function sitemap() {
     },
     ...categoryUrls,
     ...staticUrls,
+    ...legionnaireUrls,
     ...topicUrls,
     ...articleUrls,
   ];

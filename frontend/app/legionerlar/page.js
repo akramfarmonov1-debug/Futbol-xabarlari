@@ -93,9 +93,11 @@ export default async function LegionnairesPage() {
                     #{player.number}
                   </div>
                   <div>
-                    <h2 className="text-base font-extrabold text-white">
-                      {player.name}
-                    </h2>
+                    <Link href={`/legionerlar/${player.slug}`}>
+                      <h2 className="text-base font-extrabold text-white hover:text-sky-400 transition-colors">
+                        {player.name}
+                      </h2>
+                    </Link>
                     <p className="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mt-0.5">
                       <span>{player.country_flag}</span>
                       <span>{player.club}</span>
@@ -160,11 +162,11 @@ export default async function LegionnairesPage() {
             {/* Action */}
             <div className="border-t border-slate-900 pt-3">
               <Link
-                href={`/qidiruv?q=${encodeURIComponent(player.name)}`}
+                href={`/legionerlar/${player.slug}`}
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900/40 py-2.5 text-xs font-bold text-slate-300 hover:border-sky-500/30 hover:bg-sky-500 hover:text-slate-950 transition-all duration-200"
               >
-                <span>🔍</span>
-                <span>{player.name} haqidagi barcha xabarlar</span>
+                <span>🇺🇿</span>
+                <span>{player.name} profili va barcha xabarlar</span>
               </Link>
             </div>
           </div>

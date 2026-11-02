@@ -8,6 +8,7 @@ import ViewTracker from "../../../components/ViewTracker";
 import { apiGet, apiGetOrThrow } from "../../../lib/api";
 import { formatUzDate, formatUzDateTime } from "../../../lib/date";
 import { truncateSeoText, tagSlug } from "../../../lib/seo";
+import { linkifyParagraph } from "../../../lib/content-linker";
 import { SITE_URL, SITE_NAME } from "../../../lib/site";
 
 // Backend javob bermasa xato tashlanadi (error.js), "topilmadi" emas: aks holda
@@ -229,9 +230,14 @@ export default async function ArticlePage({ params }) {
 
       {/* Body Content Paragraphs */}
       <div className="mb-8 space-y-6 text-base sm:text-[17px] leading-relaxed text-slate-300">
-        {article.content.split(/\n\s*\n/).map((paragraph, i) => (
-          <p key={i}>{paragraph}</p>
-        ))}
+        {(() => {
+          const linkedKeywords = new Set();
+          return article.content.split(/\n\s*\n/).map((paragraph, i) => (
+            <p key={i}>
+              {linkifyParagraph(paragraph, article.tags, linkedKeywords)}
+            </p>
+          ));
+        })()}
       </div>
 
       {/* AI Explainer Box ("Bu nima degani?") */}
