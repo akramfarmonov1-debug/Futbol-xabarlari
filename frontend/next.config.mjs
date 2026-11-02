@@ -26,6 +26,8 @@ const nextConfig = {
       { protocol: "https", hostname: "cdn.pfl.uz" },
       { protocol: "https", hostname: "crests.football-data.org" },
       { protocol: "https", hostname: "upload.wikimedia.org" },
+      { protocol: "https", hostname: "thumb.wikimedia.org" },
+      { protocol: "https", hostname: "images.unsplash.com" },
       {
         protocol: "https",
         hostname: "futbol-xabar-backend.onrender.com",
