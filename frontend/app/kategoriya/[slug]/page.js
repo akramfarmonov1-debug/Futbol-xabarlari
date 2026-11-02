@@ -2,11 +2,8 @@ import ApiUnavailable from "../../../components/ApiUnavailable";
 import ArticleCard from "../../../components/ArticleCard";
 import { apiGet, apiGetPrimary } from "../../../lib/api";
 
-// Bo'sh ro'yxat: kategoriyalar build'da emas, birinchi tashrifda yasaladi va
-// keyin keshlanadi (ISR). Usiz dinamik sahifa har tashrifda qayta yasalardi.
-export async function generateStaticParams() {
-  return [];
-}
+// Sahifalash (searchParams: ?sahifa=2) so'rov vaqtida ishlashi uchun dinamik render qilinadi
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params, searchParams }) {
   const { slug } = await params;
