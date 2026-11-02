@@ -1,5 +1,31 @@
 import { API_URL } from "./api";
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function resolveVapidPublicKey() {
+  const envKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+  if (envKey.trim()) return envKey.trim();
+  try {
+    const res = await fetch(`${API_URL}/api/push/vapid-public-key`);
+    if (res.ok) {
+      const data = await res.json();
+      return (data?.public_key || "").trim();
+    }
+  } catch {
+    // Tarmoq xatosi bo'lsa VAPID kalitsiz fallback ishlatiladi
+  }
+  return "";
+}
+
 export async function isPushSupported() {
   if (typeof window === "undefined") return false;
   return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
@@ -24,14 +50,16 @@ export async function subscribeToPushNotifications() {
   let subscription = await registration.pushManager.getSubscription();
 
   if (!subscription) {
-    // Brauzer push xizmatidan obuna olish
+    const vapidPublicKey = await resolveVapidPublicKey();
     try {
-      subscription = await registration.pushManager.subscribe({
+      const subscribeOptions = {
         userVisibleOnly: true,
-        applicationServerKey: undefined,
-      });
-    } catch (e) {
-      // Agar VAPID talab qilsa ham oddiy subscription obyektini yaratish
+        ...(vapidPublicKey
+          ? { applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) }
+          : {}),
+      };
+      subscription = await registration.pushManager.subscribe(subscribeOptions);
+    } catch {
       subscription = await registration.pushManager.getSubscription();
     }
   }

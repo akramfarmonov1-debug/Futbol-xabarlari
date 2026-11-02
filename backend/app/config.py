@@ -117,3 +117,16 @@ BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "http://localhost:8000")
 
 # Frontend manzili (CORS uchun)
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
+
+# Web Push (VAPID) kalitlari — ixtiyoriy, RFC 8291 shifrlangan push uchun
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "").strip()
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "").strip()
+VAPID_CLAIMS_SUB = os.getenv(
+    "VAPID_CLAIMS_SUB", "mailto:rovshanovazizbek0@gmail.com"
+).strip()
+
+# Neon PostgreSQL compute-hours kvotasini tejash:
+# - /health muvaffaqiyatli DB javobini keshda saqlash muddati (sekund, standart 45 daqiqa)
+# - Bot uchun 24/7 PostgreSQL advisory lock faqat ko'p-instance holatda kerak
+HEALTH_DB_CACHE_TTL = int(os.getenv("HEALTH_DB_CACHE_TTL", "2700"))
+BOT_DB_LOCK = _bool("BOT_DB_LOCK", "false")

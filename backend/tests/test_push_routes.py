@@ -79,6 +79,11 @@ class TestPushRoutes(unittest.TestCase):
             )
             self.assertEqual(resp.status_code, 400, msg=f"Should reject {unsafe_url}")
 
+    def test_vapid_public_key_endpoint(self):
+        resp = self.client.get("/api/push/vapid-public-key")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("public_key", resp.json())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,7 +7,14 @@ from urllib.parse import urlparse
 import httpx
 from sqlalchemy.orm import Session
 
+from ..config import VAPID_CLAIMS_SUB, VAPID_PRIVATE_KEY
 from ..models import PushSubscription
+
+try:
+    from pywebpush import WebPushException, webpush
+except ImportError:  # pragma: no cover
+    WebPushException = Exception
+    webpush = None
 
 
 def is_deliverable_push_url(endpoint: str) -> bool:
@@ -112,7 +119,27 @@ def send_web_push(
                 failed_count += 1
                 continue
             try:
-                # Oddiy push endpointga xabar yuborish
+                if webpush is not None and VAPID_PRIVATE_KEY and sub.p256dh and sub.auth:
+                    try:
+                        webpush(
+                            subscription_info={
+                                "endpoint": sub.endpoint,
+                                "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                            },
+                            data=payload,
+                            vapid_private_key=VAPID_PRIVATE_KEY,
+                            vapid_claims={"sub": VAPID_CLAIMS_SUB},
+                            ttl=86400,
+                        )
+                        success_count += 1
+                    except WebPushException as exc:
+                        status_code = getattr(getattr(exc, "response", None), "status_code", None)
+                        if status_code in (404, 410):
+                            to_delete.append(sub.id)
+                        failed_count += 1
+                    continue
+
+                # VAPID sozlanmagan muhitlar uchun fallback HTTP POST
                 resp = client.post(
                     sub.endpoint,
                     content=payload.encode("utf-8"),

@@ -411,11 +411,14 @@ async def main():
         print("TELEGRAM_BOT_TOKEN is empty. Skipping Telegram Bot startup.")
         return
 
-    runtime_lock = try_runtime_lock(BOT_LOCK_ID)
-    while not runtime_lock.acquired:
-        print("🤖 Bot boshqa instance'da ishlayapti; navbat kutilmoqda...")
-        await asyncio.sleep(15)
+    use_db_lock = os.getenv("BOT_DB_LOCK", "false").strip().lower() in ("1", "true", "yes", "ha")
+    runtime_lock = None
+    if use_db_lock:
         runtime_lock = try_runtime_lock(BOT_LOCK_ID)
+        while not runtime_lock.acquired:
+            print("🤖 Bot boshqa instance'da ishlayapti; navbat kutilmoqda...")
+            await asyncio.sleep(15)
+            runtime_lock = try_runtime_lock(BOT_LOCK_ID)
 
     bot = Bot(token=BOT_TOKEN)
     try:
@@ -423,7 +426,8 @@ async def main():
         await dp.start_polling(bot)
     finally:
         await bot.session.close()
-        release_runtime_lock(runtime_lock)
+        if runtime_lock is not None:
+            release_runtime_lock(runtime_lock)
 
 
 if __name__ == "__main__":

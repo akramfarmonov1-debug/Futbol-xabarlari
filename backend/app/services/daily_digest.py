@@ -216,14 +216,24 @@ def send_daily_digest(db: Session, moment: datetime | None = None) -> bool:
 
 
 async def run_digest_loop() -> None:
-    """Fon vazifasi: har DAILY_DIGEST_INTERVAL soniyada dayjestni tekshiradi."""
+    """Fon vazifasi: har DAILY_DIGEST_INTERVAL soniyada dayjestni tekshiradi.
+
+    Maqsadli vaqt oynasidan tashqarida baza sessiyasini ochmaydi — Neon
+    PostgreSQL uxlash (auto-suspend) rejimidan bekorga uyg'onmasligi uchun.
+    """
     while True:
         try:
-            db = SessionLocal()
-            try:
-                send_daily_digest(db)
-            finally:
-                db.close()
+            if (
+                DAILY_DIGEST
+                and TELEGRAM_BOT_TOKEN
+                and TELEGRAM_CHANNEL_ID
+                and is_digest_time()
+            ):
+                db = SessionLocal()
+                try:
+                    send_daily_digest(db)
+                finally:
+                    db.close()
         except Exception as error:
             safe_print(f"❌ Kunlik dayjest xatosi: {error}")
         await asyncio.sleep(DAILY_DIGEST_INTERVAL)

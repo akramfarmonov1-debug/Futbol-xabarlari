@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from ..config import VAPID_PUBLIC_KEY
 from ..database import get_db
 from ..deps import require_admin
 from ..services.push_service import (
@@ -64,11 +65,21 @@ def unsubscribe_push(
     return {"status": "ok", "deleted": success}
 
 
+@router.get("/vapid-public-key")
+def get_vapid_public_key():
+    """Brauzer PushManager.subscribe() uchun VAPID ommaviy kalitini qaytaradi."""
+    return {"public_key": VAPID_PUBLIC_KEY}
+
+
 @router.get("/status")
 def push_status(db: Session = Depends(get_db)):
     """Obunachilar soni."""
     count = get_subscribers_count(db)
-    return {"status": "ok", "subscribers_count": count}
+    return {
+        "status": "ok",
+        "subscribers_count": count,
+        "vapid_configured": bool(VAPID_PUBLIC_KEY),
+    }
 
 
 @router.post("/broadcast", dependencies=[Depends(require_admin)])

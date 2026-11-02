@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
+from . import cache
 from .config import (
     AUTO_PUBLISH,
     AUTO_PUBLISH_MIN_IMPORTANCE,
@@ -20,6 +21,7 @@ from .config import (
     AUTO_TELEGRAM_MIN_IMPORTANCE,
     DAILY_DIGEST,
     FRONTEND_ORIGIN,
+    HEALTH_DB_CACHE_TTL,
     MEDIA_DIR,
 )
 from .database import Base, SessionLocal, engine, ensure_schema
@@ -226,15 +228,23 @@ def health():
         "pipeline": {**PIPELINE_STATE, "last_run": LAST_RUN},
         "database_init": dict(DATABASE_STATE),
     }
-    db = SessionLocal()
+    def load_latest():
+        db = SessionLocal()
+        try:
+            return db.query(func.max(Article.created_at)).scalar()
+        finally:
+            db.close()
+
     try:
-        latest = db.query(func.max(Article.created_at)).scalar()
+        latest = cache.cached(
+            ("health_db", id(SessionLocal.kw.get("bind"))),
+            HEALTH_DB_CACHE_TTL,
+            load_latest,
+        )
     except SQLAlchemyError as e:
         # 503 — monitoring nosozlikni sezadi; sababi esa javobning o'zida,
         # Render log'ini ochmasdan ham nima yiqilgani ko'rinadi.
         body.update(status="error", database="error", database_error=format_error(e))
         return JSONResponse(status_code=503, content=jsonable_encoder(body))
-    finally:
-        db.close()
     body["latest_article_at"] = latest
     return body
