@@ -4,6 +4,7 @@ import ArticleCard from "../components/ArticleCard";
 import AdPlaceholder from "../components/AdPlaceholder";
 import ApiUnavailable from "../components/ApiUnavailable";
 import LiveScores from "../components/LiveScores";
+import StandingsWidget from "../components/StandingsWidget";
 import LegionnairesWidget from "../components/LegionnairesWidget";
 import { apiGet, apiGetPrimary } from "../lib/api";
 import { formatUzDate } from "../lib/date";
@@ -131,6 +132,9 @@ export default async function HomePage() {
         <div className="hidden lg:block">
           <LiveScores />
         </div>
+
+        {/* Standings Widget */}
+        <StandingsWidget />
 
         {/* Daily Digest */}
         {(digest || []).length > 0 && (
