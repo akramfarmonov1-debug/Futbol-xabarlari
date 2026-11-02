@@ -16,7 +16,8 @@ function timeUz(iso) {
 }
 
 function TeamCrest({ src, name }) {
-  if (!src) {
+  const crest = getClubLogo(name, src);
+  if (!crest) {
     return (
       <span
         aria-hidden="true"
@@ -31,7 +32,7 @@ function TeamCrest({ src, name }) {
     <span className="relative h-6 w-6 shrink-0">
       <Image
         unoptimized // kichik gerb — qarang: next.config.mjs (images)
-        src={src}
+        src={crest}
         alt={`${name} logotipi`}
         fill
         sizes="24px"

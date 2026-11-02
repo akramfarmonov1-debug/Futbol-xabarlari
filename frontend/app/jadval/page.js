@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import ApiUnavailable from "../../components/ApiUnavailable";
 import { apiGet } from "../../lib/api";
+import { getClubLogo } from "../../lib/clubs";
 import { SITE_NAME, SITE_URL } from "../../lib/site";
 
 const LEAGUE_SEO_NAMES = {
@@ -147,13 +148,14 @@ function LeagueBadge({ profile, name, size = 20 }) {
 }
 
 function TeamIdentity({ row }) {
+  const crest = getClubLogo(row.team, row.crest);
   return (
     <div className="flex min-w-40 items-center gap-3">
-      {row.crest ? (
+      {crest ? (
         <span className="relative h-7 w-7 shrink-0">
           <Image
             unoptimized
-            src={row.crest}
+            src={crest}
             alt={`${row.team} logotipi`}
             fill
             sizes="28px"
