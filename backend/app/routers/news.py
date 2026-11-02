@@ -10,7 +10,7 @@ from .. import cache
 from ..database import get_db
 from ..models import Article, Category
 from ..schemas import ArticleCardOut, ArticleOut, SitemapArticleOut
-from ..tags import canonical_tag, tag_key
+from ..tags import canonical_tag, tag_key, tag_slug
 
 router = APIRouter(prefix="/api/news", tags=["news"])
 
@@ -137,12 +137,88 @@ def trend_topics(db: Session = Depends(get_db), kunlar: int = 7, limit: int = 15
                 totals[key] += 1
                 spellings[key][canonical] += 1
 
-        return [
-            {"teg": spellings[key].most_common(1)[0][0], "soni": count}
-            for key, count in totals.most_common(limit)
-        ]
+        result = []
+        for key, count in totals.most_common(limit):
+            label = spellings[key].most_common(1)[0][0]
+            result.append({"teg": label, "slug": tag_slug(label), "soni": count})
+        return result
 
     return cache.cached(("trends", kunlar, limit), SLOW_TTL, load)
+
+
+@router.get("/topic/{topic_slug}")
+def topic_news(
+    topic_slug: str,
+    db: Session = Depends(get_db),
+    limit: int = Query(default=24, le=60),
+):
+    """Mavzu/teg sahifasi (/mavzu/[slug]) uchun kanonik sarlavha va maqolalar ro'yxati."""
+    target_key = tag_key(topic_slug)
+    if not target_key:
+        raise HTTPException(status_code=404, detail="Mavzu topilmadi")
+
+    def load():
+        rows = (
+            published(db)
+            .with_entities(Article.id, Article.tags, Article.published_at)
+            .order_by(Article.published_at.desc())
+            .limit(400)
+            .all()
+        )
+        matched_ids: list[int] = []
+        spellings: Counter = Counter()
+
+        for article_id, tags, _ in rows:
+            for raw_tag in tags or []:
+                canonical = canonical_tag(raw_tag)
+                if not canonical:
+                    continue
+                if tag_key(canonical) == target_key:
+                    matched_ids.append(article_id)
+                    spellings[canonical] += 1
+                    break
+
+        fallback_title = canonical_tag(topic_slug.replace("-", " ")) or topic_slug.replace("-", " ").title()
+        title = spellings.most_common(1)[0][0] if spellings else fallback_title
+
+        if len(matched_ids) < limit and len(title) >= 3:
+            like_pattern = f"%{title}%"
+            extra_rows = (
+                published(db)
+                .filter(
+                    or_(
+                        Article.title.ilike(like_pattern),
+                        Article.summary.ilike(like_pattern),
+                    )
+                )
+                .with_entities(Article.id)
+                .order_by(Article.published_at.desc())
+                .limit(limit)
+                .all()
+            )
+            seen = set(matched_ids)
+            for (extra_id,) in extra_rows:
+                if extra_id not in seen:
+                    matched_ids.append(extra_id)
+                    seen.add(extra_id)
+
+        target_ids = matched_ids[:limit]
+        cards = (
+            _cards(
+                published_cards(db)
+                .filter(Article.id.in_(target_ids))
+                .order_by(Article.published_at.desc())
+            )
+            if target_ids
+            else []
+        )
+        return {
+            "slug": tag_slug(title) or topic_slug,
+            "title": title,
+            "articles": cards,
+        }
+
+    return cache.cached(("topic", target_key, limit), LIST_TTL, load)
 
 
 @router.get("/sitemap", response_model=list[SitemapArticleOut])

@@ -7,7 +7,7 @@ import CopyLinkButton from "../../../components/CopyLinkButton";
 import ViewTracker from "../../../components/ViewTracker";
 import { apiGet, apiGetOrThrow } from "../../../lib/api";
 import { formatUzDate, formatUzDateTime } from "../../../lib/date";
-import { truncateSeoText } from "../../../lib/seo";
+import { truncateSeoText, tagSlug } from "../../../lib/seo";
 import { SITE_URL, SITE_NAME } from "../../../lib/site";
 
 // Backend javob bermasa xato tashlanadi (error.js), "topilmadi" emas: aks holda
@@ -249,15 +249,18 @@ export default async function ArticlePage({ params }) {
 
       {/* Tags List */}
       <div className="mb-8 flex flex-wrap gap-2">
-        {(article.tags || []).map((tag) => (
-          <Link
-            key={tag}
-            href={`/qidiruv?q=${encodeURIComponent(tag)}`}
-            className="rounded-full border border-slate-900 bg-slate-950/60 px-3.5 py-2 text-xs font-bold text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500 hover:text-slate-950 transition-all duration-200"
-          >
-            #{tag}
-          </Link>
-        ))}
+        {(article.tags || []).map((tag) => {
+          const slug = tagSlug(tag);
+          return (
+            <Link
+              key={tag}
+              href={slug ? `/mavzu/${slug}` : `/qidiruv?q=${encodeURIComponent(tag)}`}
+              className="rounded-full border border-slate-900 bg-slate-950/60 px-3.5 py-2 text-xs font-bold text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500 hover:text-slate-950 transition-all duration-200"
+            >
+              #{tag}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Advert Place */}

@@ -117,6 +117,12 @@ def canonical_tag(tag: str) -> str:
     return _ALIASES.get(tag_key(cleaned)) or _stable_case(cleaned)
 
 
+def tag_slug(tag: str) -> str:
+    """Tegdan URL uchun toza slug yasaydi ("O'zbekiston futboli" -> "ozbekiston-futboli")."""
+    canonical = canonical_tag(tag) or (tag or "")
+    return "-".join(tag_key(canonical).split())
+
+
 def normalize_tags(tags, limit: int = 6) -> list[str]:
     """Teglar ro'yxatini kanonik ko'rinishga keltiradi va takrorlarini oladi.
 

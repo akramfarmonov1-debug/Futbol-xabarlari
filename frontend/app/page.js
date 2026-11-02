@@ -7,6 +7,7 @@ import LiveScores from "../components/LiveScores";
 import LegionnairesWidget from "../components/LegionnairesWidget";
 import { apiGet, apiGetPrimary } from "../lib/api";
 import { formatUzDate } from "../lib/date";
+import { tagSlug } from "../lib/seo";
 
 export default async function HomePage() {
   const [latest, top, digest, trends] = await Promise.all([
@@ -216,15 +217,18 @@ export default async function HomePage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {(trends || []).length > 0 ? (
-              trends.map((trend) => (
-                <Link
-                  key={trend.teg}
-                  href={`/qidiruv?q=${encodeURIComponent(trend.teg)}`}
-                  className="rounded-full border border-slate-900 bg-slate-950/60 px-3.5 py-2 text-xs font-bold text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500 hover:text-slate-950 transition-all duration-200"
-                >
-                  #{trend.teg} <span className="text-slate-500 font-medium group-hover:text-inherit">({trend.soni})</span>
-                </Link>
-              ))
+              trends.map((trend) => {
+                const slug = trend.slug || tagSlug(trend.teg);
+                return (
+                  <Link
+                    key={trend.teg}
+                    href={slug ? `/mavzu/${slug}` : `/qidiruv?q=${encodeURIComponent(trend.teg)}`}
+                    className="rounded-full border border-slate-900 bg-slate-950/60 px-3.5 py-2 text-xs font-bold text-slate-300 hover:border-emerald-500/30 hover:bg-emerald-500 hover:text-slate-950 transition-all duration-200"
+                  >
+                    #{trend.teg} <span className="text-slate-500 font-medium group-hover:text-inherit">({trend.soni})</span>
+                  </Link>
+                );
+              })
             ) : (
               <p className="text-xs sm:text-sm text-slate-500">Mavzular shakllanmagan.</p>
             )}

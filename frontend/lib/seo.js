@@ -14,3 +14,11 @@ export function truncateSeoText(value, maxLength) {
 
   return `${shortened.trimEnd()}…`;
 }
+
+export function tagSlug(tag) {
+  return String(tag || "")
+    .toLowerCase()
+    .replace(/['’ʼʻ`´]/g, "")
+    .replace(/[^a-z0-9\u0400-\u04ff]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}

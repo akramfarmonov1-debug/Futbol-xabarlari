@@ -116,6 +116,19 @@ class NewsRouteTests(unittest.TestCase):
         missing = self.client.get("/api/legionnaires/not-found-player")
         self.assertEqual(missing.status_code, 404)
 
+    def test_topic_and_trends_routes(self):
+        trends = self.client.get("/api/news/trends?kunlar=3650")
+        self.assertEqual(trends.status_code, 200)
+        trend_items = trends.json()
+        self.assertTrue(all("slug" in item for item in trend_items))
+
+        topic = self.client.get("/api/news/topic/transfer")
+        self.assertEqual(topic.status_code, 200)
+        topic_data = topic.json()
+        self.assertEqual(topic_data["slug"], "transfer")
+        self.assertEqual(topic_data["title"], "Transfer")
+        self.assertGreaterEqual(len(topic_data["articles"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

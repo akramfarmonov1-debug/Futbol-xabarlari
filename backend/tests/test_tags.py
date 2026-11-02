@@ -2,7 +2,8 @@ import unittest
 
 from app.services.ai_agent import ANALYSIS_SCHEMA, SYSTEM_PROMPT, _google_schema
 from app.services.content_quality import normalize_analysis
-from app.tags import canonical_tag, normalize_tags, tag_key
+from app.services.indexnow import build_article_index_urls
+from app.tags import canonical_tag, normalize_tags, tag_key, tag_slug
 
 
 class TagKeyTests(unittest.TestCase):
@@ -11,6 +12,26 @@ class TagKeyTests(unittest.TestCase):
 
     def test_punctuation_is_ignored(self):
         self.assertEqual(tag_key("#Barcelona!"), tag_key("barcelona"))
+
+    def test_tag_slug_canonicalizes_and_hyphenates(self):
+        self.assertEqual(tag_slug("Barcelona"), "barselona")
+        self.assertEqual(tag_slug("O'zbekiston terma jamoasi"), "ozbekiston-terma-jamoasi")
+        self.assertEqual(tag_slug("Abdukodir Khusanov"), "abduqodir-husanov")
+
+    def test_indexnow_urls_include_article_category_and_topics(self):
+        class DummyCat:
+            slug = "premyer-liga"
+
+        class DummyArticle:
+            slug = "husanov-gol-urdi"
+            category = DummyCat()
+            tags = ["Abduqodir Husanov", "Manchester Siti"]
+
+        urls = build_article_index_urls(DummyArticle(), base_url="https://www.futbolxabar.uz")
+        self.assertIn("https://www.futbolxabar.uz/maqola/husanov-gol-urdi", urls)
+        self.assertIn("https://www.futbolxabar.uz/kategoriya/premyer-liga", urls)
+        self.assertIn("https://www.futbolxabar.uz/mavzu/abduqodir-husanov", urls)
+        self.assertIn("https://www.futbolxabar.uz/mavzu/manchester-siti", urls)
 
 
 class CanonicalTagTests(unittest.TestCase):

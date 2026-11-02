@@ -27,6 +27,7 @@ from .database import Base, SessionLocal, engine, ensure_schema
 from .models import Article, ArticleQuality, Category
 from .seed import seed_categories
 from .services.ai_agent import active_model, analyze_news
+from .services.indexnow import notify_indexnow_article
 from .services.collector import (
     collect_news,
     improve_image_url,
@@ -407,6 +408,7 @@ def _run_pipeline(per_feed: int = 5) -> int:
             saved += 1
 
             if auto_publish:
+                notify_indexnow_article(article)
                 print("   ✓ Saytga chiqarildi")
 
             # Muhim yangiliklarni Telegram kanalga avtomatik yuborish

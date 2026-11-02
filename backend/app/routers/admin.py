@@ -17,6 +17,7 @@ from ..schemas import (
     StatsOut,
 )
 from ..config import AUTO_TELEGRAM, TELEGRAM_BOT_TOKEN
+from ..services.indexnow import notify_indexnow_article
 from ..services.telegram import send_to_channel
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -75,6 +76,7 @@ def approve_article(article_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(article)
     cache.clear()
+    notify_indexnow_article(article)
     return article
 
 

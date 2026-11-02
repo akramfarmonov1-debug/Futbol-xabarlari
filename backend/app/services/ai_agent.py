@@ -35,7 +35,7 @@ SYSTEM_PROMPT = """**Rol:** Sen jahon futboli bo'yicha yetakchi, tajribali o'zbe
 4. **Qisqalik va xulosa:** "xulosa" maydonida voqeaning asosiy mohiyatini 2-4 ta aniq va lo'nda jumlada ifoda et.
 5. **Muxlis uchun ma'no:** "amaliy_ahamiyat" maydonida bu voqea nima sababdan muhimligini faqat mavjud ma'lumotlar doirasida 1-2 jumlada tushuntir.
 6. **Jozibador sarlavha:** "sarlavha" maydonida xabarning tub mohiyatini aks ettiruvchi professional sarlavha yoz (60-90 belgi). Clickbait va arzon shov-shuv ishlatma.
-7. **SEO sarlavha:** "seo_sarlavha" maydonida qidiruv tizimlari uchun kalit so'zlarga boy sarlavha yoz (50-70 belgi).
+7. **SEO sarlavha (Google Search & Discover uchun):** "seo_sarlavha" maydonida 50-65 belgili, dastlabki 3 ta so'zida asosiy subyekt (futbolchi/klub/turnir nomi) va aniq voqea/natija qatnashgan qidiruvga boy sarlavha yoz. Maqolaning 1-paragrafiga esa "Kim, qayerda va qanday natija qayd etdi?" savollariga aniq javob kirit (Featured Snippet uchun).
 8. **Baholash:** Avval "baho_sababi" maydonida bir jumlada xabar qaysi daraja ta'rifiga mos
    kelishini ayt, so'ng "ahamiyati" maydonida 1 dan 5 gacha butun son ber. Shkala mutlaq:
    xabarni o'z ichida emas, bir mavsumdagi butun futbol oqimi bilan solishtir.
