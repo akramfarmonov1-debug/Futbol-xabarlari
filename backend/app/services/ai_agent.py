@@ -218,8 +218,9 @@ def _analyze_with_vertex(user_text: str) -> dict:
 
     schema = _google_schema()
     models_to_try = [VERTEX_GEMINI_MODEL]
-    if VERTEX_GEMINI_MODEL != "gemini-2.5-flash":
-        models_to_try.append("gemini-2.5-flash")
+    for fallback_model in ("gemini-3.7-flash", "gemini-2.5-flash"):
+        if fallback_model not in models_to_try:
+            models_to_try.append(fallback_model)
 
     payload = {
         "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},

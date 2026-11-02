@@ -20,10 +20,8 @@ services:
       - key: GOOGLE_CLOUD_LOCATION
         value: "global"
       - key: VERTEX_GEMINI_MODEL
-        # Jonli servis 2026-08-15 holatiga shu modelda ishlayapti (/health).
-        # Bu fayl "gemini-2.5-flash-lite" da qolib ketgan edi — blueprint
-        # qayta qo'llanganda model jimgina pasayib ketardi.
-        value: "gemini-3.7-flash"
+        # Jonli servis 2026-11 holatiga shu modelda ishlaydi (/health).
+        value: "gemini-3.8-flash"
       - key: ADMIN_TOKEN
         sync: false
       - key: TELEGRAM_BOT_TOKEN

@@ -2,7 +2,7 @@ import unittest
 
 from sqlalchemy.engine import make_url
 
-from app.config import pin_postgres_driver
+from app.config import _normalize_gemini_model, pin_postgres_driver
 
 
 class DatabaseUrlTests(unittest.TestCase):
@@ -20,6 +20,11 @@ class DatabaseUrlTests(unittest.TestCase):
     def test_other_urls_are_left_alone(self):
         for url in ("sqlite:///./x.db", "sqlite://", "postgresql+psycopg2://u:p@h/db"):
             self.assertEqual(pin_postgres_driver(url), url)
+
+    def test_normalize_gemini_model_upgrades_3_7_to_3_8(self):
+        self.assertEqual(_normalize_gemini_model(""), "gemini-3.8-flash")
+        self.assertEqual(_normalize_gemini_model("gemini-3.7-flash"), "gemini-3.8-flash")
+        self.assertEqual(_normalize_gemini_model("gemini-3.8-flash"), "gemini-3.8-flash")
 
 
 if __name__ == "__main__":

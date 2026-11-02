@@ -31,7 +31,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://futbolxabar:${POSTGRES_PASSWORD:-futbolxabar_parol}@db:5432/futbolxabar
       AI_PROVIDER: ${AI_PROVIDER:-gemini}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-admin-token-o'zgartiring}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -67,7 +67,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://futbolxabar:${POSTGRES_PASSWORD:-futbolxabar_parol}@db:5432/futbolxabar
       AI_PROVIDER: ${AI_PROVIDER:-gemini}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}

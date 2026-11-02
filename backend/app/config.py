@@ -18,17 +18,29 @@ DATABASE_URL = pin_postgres_driver(
     os.getenv("DATABASE_URL", "sqlite:///./futbolxabar.db")
 )
 
+def _normalize_gemini_model(value: str) -> str:
+    """Eski 3.7 standartini yangi 3.8 modeliga ko'taradi."""
+    model = (value or "").strip() or "gemini-3.8-flash"
+    if model == "gemini-3.7-flash":
+        return "gemini-3.8-flash"
+    return model
+
+
 # AI provayder: "gemini" (standart), "vertex" yoki "claude"
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").strip().lower()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
+GEMINI_MODEL = _normalize_gemini_model(
+    os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+)
 
 # Render kabi Google Cloud'dan tashqaridagi serverlar uchun Vertex AI + ADC.
 GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "")
 GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
-VERTEX_GEMINI_MODEL = os.getenv("VERTEX_GEMINI_MODEL", "gemini-3.7-flash")
+VERTEX_GEMINI_MODEL = _normalize_gemini_model(
+    os.getenv("VERTEX_GEMINI_MODEL", "gemini-3.8-flash")
+)
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-4-8")
