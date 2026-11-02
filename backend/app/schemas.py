@@ -69,6 +69,7 @@ class ArticleBaseOut(BaseModel):
     source_published_at: datetime | None
     published_at: datetime | None
     views_count: int = 0
+    reactions: dict[str, int] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime | None = None
 

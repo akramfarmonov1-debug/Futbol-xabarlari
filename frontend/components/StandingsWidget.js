@@ -41,7 +41,7 @@ const WIDGET_LEAGUES = [
   },
 ];
 
-export default async function StandingsWidget() {
+export default async function StandingsWidget({ initialLeagueCode }) {
   const [profiles, ...standingsResults] = await Promise.all([
     apiGet("/api/scores/league-profiles"),
     ...WIDGET_LEAGUES.map((league) =>
@@ -80,5 +80,10 @@ export default async function StandingsWidget() {
 
   if (!leagues.length) return null;
 
-  return <StandingsWidgetClient leagues={leagues} />;
+  return (
+    <StandingsWidgetClient
+      leagues={leagues}
+      initialLeagueCode={initialLeagueCode}
+    />
+  );
 }

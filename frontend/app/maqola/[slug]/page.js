@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdPlaceholder from "../../../components/AdPlaceholder";
+import ArticleReactions from "../../../components/ArticleReactions";
 import CopyLinkButton from "../../../components/CopyLinkButton";
+import StandingsWidget from "../../../components/StandingsWidget";
 import ViewTracker from "../../../components/ViewTracker";
 import { apiGet, apiGetOrThrow } from "../../../lib/api";
 import { formatUzDate, formatUzDateTime } from "../../../lib/date";
@@ -148,6 +150,17 @@ export default async function ArticlePage({ params }) {
   const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(`${SITE_URL}/maqola/${article.slug}`)}&text=${encodeURIComponent(article.title)}`;
   const related = (await apiGet(`/api/news/${slug}/related`, { limit: 4 })) || [];
 
+  const categorySlug = article.category?.slug || "";
+  const leagueByCat = {
+    "uzbekiston-futboli": "UZB",
+    "premyer-liga": "PL",
+    "la-liga": "PD",
+    "seriya-a": "SA",
+    "bundesliga": "BL1",
+    "chempionlar-ligasi": "CL",
+  };
+  const articleLeagueCode = leagueByCat[categorySlug] || null;
+
   return (
     <article className="mx-auto max-w-2xl py-4 sm:py-8">
       <ViewTracker slug={article.slug} />
@@ -269,6 +282,14 @@ export default async function ArticlePage({ params }) {
         })}
       </div>
 
+      {/* Reader Reactions */}
+      <div className="mb-8">
+        <ArticleReactions
+          slug={article.slug}
+          initialReactions={article.reactions || {}}
+        />
+      </div>
+
       {/* Advert Place */}
       <div className="mb-8">
         <AdPlaceholder type="banner" />
@@ -338,6 +359,13 @@ export default async function ArticlePage({ params }) {
             ))}
           </div>
         </section>
+      )}
+
+      {/* Relevant League Standings */}
+      {articleLeagueCode && (
+        <div className="mt-10">
+          <StandingsWidget initialLeagueCode={articleLeagueCode} />
+        </div>
       )}
     </article>
   );

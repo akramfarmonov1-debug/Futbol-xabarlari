@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { getFavoriteClub, saveFavoriteClub } from "../lib/favorites";
 
 const DEFAULT_VISIBLE_ROWS = 8;
 
@@ -64,9 +65,29 @@ function formatGoalDiff(val) {
   return String(num);
 }
 
-export default function StandingsWidgetClient({ leagues }) {
-  const [activeCode, setActiveCode] = useState(leagues[0]?.code || "UZB");
+export default function StandingsWidgetClient({ leagues, initialLeagueCode }) {
+  const [activeCode, setActiveCode] = useState(
+    initialLeagueCode || leagues[0]?.code || "UZB",
+  );
   const [expanded, setExpanded] = useState(false);
+  const [favoriteClub, setFavoriteClub] = useState(null);
+
+  useEffect(() => {
+    const fav = getFavoriteClub();
+    if (fav) {
+      setFavoriteClub(fav);
+      if (fav.leagueCode && !initialLeagueCode) {
+        const found = leagues.some((l) => l.code === fav.leagueCode);
+        if (found) setActiveCode(fav.leagueCode);
+      }
+    }
+
+    const handler = (e) => {
+      setFavoriteClub(e.detail || null);
+    };
+    window.addEventListener("favorite_club_changed", handler);
+    return () => window.removeEventListener("favorite_club_changed", handler);
+  }, [leagues, initialLeagueCode]);
 
   const activeLeague =
     leagues.find((item) => item.code === activeCode) || leagues[0];
@@ -77,6 +98,14 @@ export default function StandingsWidgetClient({ leagues }) {
   const totalTeams = activeLeague.totalTeams || rows.length;
   const visibleRows = expanded ? rows : rows.slice(0, DEFAULT_VISIBLE_ROWS);
   const canExpand = rows.length > DEFAULT_VISIBLE_ROWS;
+
+  const toggleFavorite = (teamName, leagueCode) => {
+    if (favoriteClub?.name?.toLowerCase() === teamName.toLowerCase()) {
+      saveFavoriteClub(null);
+    } else {
+      saveFavoriteClub({ name: teamName, leagueCode });
+    }
+  };
 
   return (
     <section
@@ -189,16 +218,23 @@ export default function StandingsWidgetClient({ leagues }) {
                 row.position,
                 totalTeams,
               );
+              const isFav =
+                favoriteClub?.name?.toLowerCase() === row.team?.toLowerCase();
+
               return (
                 <tr
                   key={`${activeLeague.code}-${row.position}-${row.team}`}
-                  className="transition-colors duration-150 hover:bg-slate-900/35"
+                  className={`transition-colors duration-150 ${
+                    isFav
+                      ? "bg-emerald-500/10 hover:bg-emerald-500/15"
+                      : "hover:bg-slate-900/35"
+                  }`}
                 >
                   <td className={`py-2 text-[11px] ${posStyle.color}`}>
                     <div className={posStyle.indicator}>{row.position}</div>
                   </td>
                   <td className="py-2 pr-1 font-semibold text-slate-200 max-w-0">
-                    <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-1.5">
                       {row.crest ? (
                         <span className="relative h-5 w-5 shrink-0">
                           <Image
@@ -218,9 +254,31 @@ export default function StandingsWidgetClient({ leagues }) {
                           {row.team?.slice(0, 1) || "?"}
                         </span>
                       )}
-                      <span className="truncate text-xs" title={row.team}>
+                      <span
+                        className={`truncate text-xs ${
+                          isFav ? "font-bold text-emerald-300" : ""
+                        }`}
+                        title={row.team}
+                      >
                         {row.team}
                       </span>
+                      <button
+                        type="button"
+                        aria-label={
+                          isFav
+                            ? `${row.team}ni sevimlilardan chiqarish`
+                            : `${row.team}ni sevimli jamoam deb belgilash`
+                        }
+                        title={isFav ? "Sevimli jamoangiz" : "Sevimli qilish"}
+                        onClick={() =>
+                          toggleFavorite(row.team, activeLeague.code)
+                        }
+                        className={`shrink-0 text-[11px] transition-transform hover:scale-125 cursor-pointer ${
+                          isFav ? "opacity-100" : "opacity-20 hover:opacity-100"
+                        }`}
+                      >
+                        ⭐
+                      </button>
                     </div>
                   </td>
                   <td className="py-2 text-center text-[11px] font-medium text-slate-400">
@@ -229,7 +287,11 @@ export default function StandingsWidgetClient({ leagues }) {
                   <td className="py-2 text-center text-[11px] font-medium text-slate-400">
                     {formatGoalDiff(row.goal_diff)}
                   </td>
-                  <td className="py-2 pr-2.5 text-right text-xs font-extrabold text-white">
+                  <td
+                    className={`py-2 pr-2.5 text-right text-xs font-extrabold ${
+                      isFav ? "text-emerald-300" : "text-white"
+                    }`}
+                  >
                     {row.points}
                   </td>
                 </tr>

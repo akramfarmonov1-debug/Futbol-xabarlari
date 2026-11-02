@@ -53,3 +53,9 @@ def ensure_schema() -> None:
             connection.execute(
                 text("ALTER TABLE articles ADD COLUMN views_count INTEGER DEFAULT 0")
             )
+    if "reactions" not in existing:
+        reactions_col_type = "JSON" if not DATABASE_URL.startswith("sqlite") else "TEXT"
+        with engine.begin() as connection:
+            connection.execute(
+                text(f"ALTER TABLE articles ADD COLUMN reactions {reactions_col_type} DEFAULT '{{}}'")
+            )

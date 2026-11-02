@@ -460,3 +460,27 @@ def count_view(slug: str, db: Session = Depends(get_db)):
     db.commit()
     return Response(status_code=204)
 
+
+ALLOWED_REACTIONS = {"fire", "like", "applause", "shock"}
+
+
+@router.post("/{slug}/react")
+def react_to_article(
+    slug: str,
+    reaction: str = Query(..., regex="^(fire|like|applause|shock)$"),
+    db: Session = Depends(get_db),
+):
+    """Maqolaga emodzi reaksiya bildirish (fire, like, applause, shock).
+
+    Reaksiyalar maqola yozuvidagi JSON obyektida inkrement qilinadi.
+    """
+    article = published(db).filter(Article.slug == slug).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Maqola topilmadi")
+
+    current_reactions = dict(article.reactions or {})
+    current_reactions[reaction] = int(current_reactions.get(reaction, 0)) + 1
+    article.reactions = current_reactions
+    db.commit()
+    return current_reactions
+
