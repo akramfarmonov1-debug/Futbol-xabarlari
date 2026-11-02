@@ -42,6 +42,8 @@ services:
         value: "3600"
       - key: FRONTEND_ORIGIN
         value: "https://futbolxabar.uz"
+      - key: SITE_URL
+        value: "https://www.futbolxabar.uz"
       - key: DAILY_DIGEST
         value: "true"
       - key: DAILY_DIGEST_TIME

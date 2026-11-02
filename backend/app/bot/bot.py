@@ -39,7 +39,11 @@ load_dotenv()
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 API_URL = os.getenv("API_URL", "http://localhost:8000")
-SITE_URL = os.getenv("SITE_URL", "http://localhost:3000")
+raw_site = os.getenv("SITE_URL") or os.getenv("FRONTEND_ORIGIN") or "https://www.futbolxabar.uz"
+if "localhost" in raw_site or "127.0.0.1" in raw_site:
+    SITE_URL = "https://www.futbolxabar.uz"
+else:
+    SITE_URL = raw_site.rstrip("/")
 
 dp = Dispatcher()
 
@@ -109,12 +113,22 @@ async def send_articles(message: Message, articles: list[dict] | None, empty_tex
         await message.answer(empty_text)
         return
     for article in articles[:limit]:
-        await message.answer(
-            article_text(article),
-            parse_mode="HTML",
-            reply_markup=article_buttons(article),
-            disable_web_page_preview=True,
-        )
+        try:
+            await message.answer(
+                article_text(article),
+                parse_mode="HTML",
+                reply_markup=article_buttons(article),
+                disable_web_page_preview=True,
+            )
+        except Exception:
+            try:
+                await message.answer(
+                    article_text(article),
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+                )
+            except Exception as e:
+                print(f"send_articles fallback error: {e}")
 
 
 # ===================== COMMAND HANDLERS =====================
@@ -162,48 +176,55 @@ async def cmd_sayt(message: Message):
 @dp.message(Command("bugun"))
 @dp.message(F.text == "⚽ Bugungi o'yinlar")
 async def cmd_scores(message: Message):
-    groups = await api_get("/api/scores/today")
-    if not isinstance(groups, list) or not groups:
-        await message.answer("⚽ Bugunga belgilangan asosiy o‘yinlar topilmadi.")
-        return
+    try:
+        groups = await api_get("/api/scores/today")
+        if not isinstance(groups, list) or not groups:
+            await message.answer("⚽ Bugunga belgilangan asosiy o‘yinlar topilmadi.")
+            return
 
-    lines = ["⚽ <b>Bugungi futbol o‘yinlari va hisoblar:</b>\n"]
-    shown = 0
+        lines = ["⚽ <b>Bugungi futbol o‘yinlari va hisoblar:</b>\n"]
+        shown = 0
 
-    for group in groups:
-        comp_name = html.escape(str(group.get("competition") or "Turnir"))
-        matches = group.get("matches") or []
-        if not matches:
-            continue
-        lines.append(f"🏆 <b>{comp_name}</b>")
-        for m in matches[:6]:
-            home = html.escape(str(m.get("home") or m.get("home_team") or "?"))
-            away = html.escape(str(m.get("away") or m.get("away_team") or "?"))
-            home_score = m.get("home_score")
-            away_score = m.get("away_score")
-            status = m.get("status") or ""
-            is_live = bool(m.get("is_live"))
+        for group in groups:
+            comp_name = html.escape(str(group.get("competition") or "Turnir"))
+            matches = group.get("matches") or []
+            if not matches:
+                continue
+            lines.append(f"🏆 <b>{comp_name}</b>")
+            for m in matches[:6]:
+                home = html.escape(str(m.get("home") or m.get("home_team") or "?"))
+                away = html.escape(str(m.get("away") or m.get("away_team") or "?"))
+                home_score = m.get("home_score")
+                away_score = m.get("away_score")
+                status = m.get("status") or ""
+                is_live = bool(m.get("is_live"))
 
-            score_str = (
-                f"{home_score} : {away_score}"
-                if home_score is not None and away_score is not None
-                else "vs"
-            )
-            status_icon = "🔴 LIVE" if is_live else f"⏰ {html.escape(str(status))}" if status else "⏰"
-            lines.append(f"• <b>{home}</b> {score_str} <b>{away}</b> ({status_icon})")
-            shown += 1
-        lines.append("")
-        if shown >= 15:
-            break
+                score_str = (
+                    f"{home_score} : {away_score}"
+                    if home_score is not None and away_score is not None
+                    else "vs"
+                )
+                status_icon = "🔴 LIVE" if is_live else f"⏰ {html.escape(str(status))}" if status else "⏰"
+                lines.append(f"• <b>{home}</b> {score_str} <b>{away}</b> ({status_icon})")
+                shown += 1
+            lines.append("")
+            if shown >= 15:
+                break
 
-    if shown == 0:
-        await message.answer("⚽ Bugunga belgilangan asosiy o‘yinlar topilmadi.")
-        return
+        if shown == 0:
+            await message.answer("⚽ Bugunga belgilangan asosiy o‘yinlar topilmadi.")
+            return
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="📊 Saytda barcha hisoblar", url=f"{SITE_URL}/jadval")]]
-    )
-    await message.answer("\n".join(lines).strip(), parse_mode="HTML", reply_markup=keyboard)
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="📊 Saytda barcha hisoblar", url=f"{SITE_URL}/jadval")]]
+        )
+        try:
+            await message.answer("\n".join(lines).strip(), parse_mode="HTML", reply_markup=keyboard)
+        except Exception:
+            await message.answer("\n".join(lines).strip(), parse_mode="HTML")
+    except Exception as e:
+        print(f"cmd_scores error: {e}")
+        await message.answer("⚽ Bugungi o‘yinlar ma'lumotlarini yuklashda xatolik yuz berdi. Iltimos, birozdan so'ng qayta urinib ko'ring.")
 
 
 # ===================== 🏆 JADVAL / STANDINGS =====================
@@ -274,38 +295,45 @@ async def handle_back_leagues(callback: CallbackQuery):
 @dp.message(Command("legionerlar"))
 @dp.message(F.text == "🇺🇿 Legionerlarimiz")
 async def cmd_legionnaires(message: Message):
-    data = await api_get("/api/legionnaires")
-    players = data if isinstance(data, list) else (data.get("legionnaires", []) if isinstance(data, dict) else [])
-    if not players:
-        await message.answer("🇺🇿 Legionerlarimiz haqidagi ma'lumotlar yangilanmoqda.")
-        return
+    try:
+        data = await api_get("/api/legionnaires")
+        players = data if isinstance(data, list) else (data.get("legionnaires", []) if isinstance(data, dict) else [])
+        if not players:
+            await message.answer("🇺🇿 Legionerlarimiz haqidagi ma'lumotlar yangilanmoqda.")
+            return
 
-    lines = ["🇺🇿 <b>O‘zbekistonlik legionerlar joriy holati:</b>\n"]
+        lines = ["🇺🇿 <b>O‘zbekistonlik legionerlar joriy holati:</b>\n"]
 
-    for p in players:
-        flag = p.get("country_flag") or "⚽"
-        name = html.escape(str(p.get("name") or ""))
-        club = html.escape(str(p.get("club") or ""))
-        league = html.escape(str(p.get("league") or ""))
-        position = html.escape(str(p.get("position") or ""))
-        market_value = html.escape(str(p.get("market_value") or ""))
-        recent = p.get("recent_articles") or []
+        for p in players:
+            flag = p.get("country_flag") or "⚽"
+            name = html.escape(str(p.get("name") or ""))
+            club = html.escape(str(p.get("club") or ""))
+            league = html.escape(str(p.get("league") or ""))
+            position = html.escape(str(p.get("position") or ""))
+            market_value = html.escape(str(p.get("market_value") or ""))
+            recent = p.get("recent_articles") or []
 
-        meta = " • ".join(part for part in (position, market_value) if part)
-        lines.append(f"{flag} <b>{name}</b> ({club} — {league})")
-        if meta:
-            lines.append(f"   ℹ️ <i>{meta}</i>")
-        if recent:
-            latest = recent[0]
-            art_title = html.escape(str(latest.get("title") or "So'nggi xabar"))
-            art_slug = latest.get("slug") or ""
-            lines.append(f"   📰 <a href=\"{SITE_URL}/maqola/{art_slug}\">{art_title}</a>")
-        lines.append("")
+            meta = " • ".join(part for part in (position, market_value) if part)
+            lines.append(f"{flag} <b>{name}</b> ({club} — {league})")
+            if meta:
+                lines.append(f"   ℹ️ <i>{meta}</i>")
+            if recent:
+                latest = recent[0]
+                art_title = html.escape(str(latest.get("title") or "So'nggi xabar"))
+                art_slug = latest.get("slug") or ""
+                lines.append(f"   📰 <a href=\"{SITE_URL}/maqola/{art_slug}\">{art_title}</a>")
+            lines.append("")
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="🇺🇿 Saytda legionerlar sahifasi", url=f"{SITE_URL}/legionerlar")]]
-    )
-    await message.answer("\n".join(lines).strip(), parse_mode="HTML", reply_markup=keyboard, disable_web_page_preview=True)
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="🇺🇿 Saytda legionerlar sahifasi", url=f"{SITE_URL}/legionerlar")]]
+        )
+        try:
+            await message.answer("\n".join(lines).strip(), parse_mode="HTML", reply_markup=keyboard, disable_web_page_preview=True)
+        except Exception:
+            await message.answer("\n".join(lines).strip(), parse_mode="HTML", disable_web_page_preview=True)
+    except Exception as e:
+        print(f"cmd_legionnaires error: {e}")
+        await message.answer("🇺🇿 Legionerlarimiz ma'lumotlarini yuklashda xatolik yuz berdi. Iltimos, birozdan so'ng qayta urinib ko'ring.")
 
 
 # ===================== 🔥 TOP / NEWS =====================
