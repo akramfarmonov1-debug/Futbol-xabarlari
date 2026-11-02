@@ -37,7 +37,7 @@ export default async function HomePage() {
         {/* Hero Feature Article */}
         {heroArticle && (
           <section className="group relative overflow-hidden rounded-3xl border border-slate-900 bg-slate-950/40 p-5 sm:p-7 backdrop-blur-md hover:border-emerald-500/20 transition-all duration-300">
-            <div className="grid gap-6 md:grid-cols-2 items-center">
+            <div className="grid gap-6 md:grid-cols-2">
               {/* Image */}
               <Link href={`/maqola/${heroArticle.slug}`} className="relative block overflow-hidden rounded-2xl aspect-video md:aspect-[4/3] w-full bg-slate-950">
                 {heroArticle.image_url ? (
@@ -60,7 +60,7 @@ export default async function HomePage() {
               </Link>
 
               {/* Text Context */}
-              <div className="flex flex-col h-full justify-center">
+              <div className="flex flex-col justify-between">
                 <div className="mb-4 flex items-center gap-3 text-xs sm:text-sm">
                   <span className="rounded-full bg-emerald-500/10 px-3 py-1 font-bold text-xs uppercase tracking-wider text-emerald-400 border border-emerald-500/10">
                     {heroArticle.category?.name || "AI"}

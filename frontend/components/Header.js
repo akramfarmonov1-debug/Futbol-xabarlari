@@ -3,12 +3,26 @@ import Link from "next/link";
 import { apiGet } from "../lib/api";
 import NotificationBell from "./NotificationBell";
 
+function UzFlag({ className = "h-3 w-4.5" }) {
+  return (
+    <svg className={`${className} rounded-xs inline-block shadow-xs shrink-0`} viewBox="0 0 500 250" fill="none">
+      <rect width="500" height="83.33" fill="#1EB53A" y="166.67" />
+      <rect width="500" height="83.33" fill="#FFFFFF" y="83.33" />
+      <rect width="500" height="83.33" fill="#0099B5" />
+      <rect width="500" height="5" fill="#CE1126" y="80.83" />
+      <rect width="500" height="5" fill="#CE1126" y="164.17" />
+      <circle cx="50" cy="41.67" r="25" fill="#FFFFFF" />
+      <circle cx="58" cy="41.67" r="25" fill="#0099B5" />
+    </svg>
+  );
+}
+
 export default async function Header() {
   const categories = (await apiGet("/api/categories")) || [];
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-slate-900 bg-slate-950/80 backdrop-blur-md">
-      <div className="mx-auto max-w-6xl px-4 py-4 flex flex-col gap-4">
+    <header className="sticky top-0 z-30 w-full border-b border-slate-900/90 bg-slate-950/95 backdrop-blur-md">
+      <div className="mx-auto max-w-6xl px-4 py-3.5 flex flex-col gap-3.5">
         {/* Top Row */}
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
@@ -24,7 +38,7 @@ export default async function Header() {
           {/* Actions & Search */}
           <div className="flex items-center gap-3">
             {/* Desktop Telegram Links */}
-            <div className="hidden lg:flex items-center gap-4 text-xs font-semibold">
+            <div className="hidden lg:flex items-center gap-3 text-xs font-semibold">
               <a
                 href="https://t.me/futbolxabarida"
                 target="_blank"
@@ -61,35 +75,40 @@ export default async function Header() {
           </div>
         </div>
 
-        {/* Categories Bar — har doim konteyner ichida gorizontal scroll
-            qilinadi, planshet (640-1024px) da sahifani kengaytirmaydi. */}
-        <nav className="flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto pb-1 hide-scrollbar custom-scrollbar">
-          <Link
-            href="/legionerlar"
-            className="flex shrink-0 items-center gap-1 rounded-full border border-sky-500/20 bg-sky-500/10 px-3.5 py-1.5 text-xs font-semibold text-sky-400 hover:bg-sky-500 hover:text-slate-950 transition-all duration-200 shadow-sm shadow-sky-500/5"
-          >
-            🇺🇿 Legionerlar
-          </Link>
-
-          <Link
-            href="/jadval"
-            className="flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 transition-all duration-200 shadow-sm shadow-emerald-500/5"
-          >
-            🏆 Turnir Jadvali
-          </Link>
-          
-          <div className="h-4 w-px bg-slate-800 shrink-0"></div>
-
-          {categories.map((cat) => (
+        {/* Categories Bar — silliq o'ng gradientli gorizontal scroll */}
+        <div className="relative max-w-full">
+          <nav className="flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto pb-1 pr-6 hide-scrollbar custom-scrollbar">
             <Link
-              key={cat.slug}
-              href={`/kategoriya/${cat.slug}`}
-              className="shrink-0 rounded-full border border-slate-800 bg-slate-900/20 px-3.5 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-700 hover:text-white hover:bg-slate-900/40 transition-all duration-200"
+              href="/legionerlar"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-3.5 py-1.5 text-xs font-semibold text-sky-400 hover:bg-sky-500 hover:text-slate-950 transition-all duration-200 shadow-sm shadow-sky-500/5"
             >
-              {cat.name}
+              <UzFlag className="h-3 w-4.5" />
+              <span>Legionerlar</span>
             </Link>
-          ))}
-        </nav>
+
+            <Link
+              href="/jadval"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500 hover:text-slate-950 transition-all duration-200 shadow-sm shadow-emerald-500/5"
+            >
+              <span>🏆</span>
+              <span>Turnir Jadvali</span>
+            </Link>
+            
+            <div className="h-4 w-px bg-slate-800 shrink-0"></div>
+
+            {categories.map((cat) => (
+              <Link
+                key={cat.slug}
+                href={`/kategoriya/${cat.slug}`}
+                className="shrink-0 rounded-full border border-slate-800 bg-slate-900/20 px-3.5 py-1.5 text-xs font-medium text-slate-300 hover:border-slate-700 hover:text-white hover:bg-slate-900/40 transition-all duration-200"
+              >
+                {cat.name}
+              </Link>
+            ))}
+          </nav>
+          {/* O'ng tomondagi yumshoq gradient soyasi */}
+          <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-10 bg-gradient-to-l from-slate-950 via-slate-950/80 to-transparent"></div>
+        </div>
       </div>
     </header>
   );
