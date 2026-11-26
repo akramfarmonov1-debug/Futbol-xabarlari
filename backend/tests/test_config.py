@@ -2,7 +2,7 @@ import unittest
 
 from sqlalchemy.engine import make_url
 
-from app.config import _normalize_gemini_model, pin_postgres_driver
+from app.config import GEMINI_FALLBACK_MODELS, _normalize_gemini_model, pin_postgres_driver
 
 
 class DatabaseUrlTests(unittest.TestCase):
@@ -21,10 +21,16 @@ class DatabaseUrlTests(unittest.TestCase):
         for url in ("sqlite:///./x.db", "sqlite://", "postgresql+psycopg2://u:p@h/db"):
             self.assertEqual(pin_postgres_driver(url), url)
 
-    def test_normalize_gemini_model_upgrades_3_7_to_3_8(self):
-        self.assertEqual(_normalize_gemini_model(""), "gemini-3.8-flash")
-        self.assertEqual(_normalize_gemini_model("gemini-3.7-flash"), "gemini-3.8-flash")
-        self.assertEqual(_normalize_gemini_model("gemini-3.8-flash"), "gemini-3.8-flash")
+    def test_normalize_gemini_model_upgrades_deprecated_models(self):
+        for deprecated in ("", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.7-flash"):
+            self.assertEqual(_normalize_gemini_model(deprecated), "gemini-3.8-flash")
+        for supported in ("gemini-3.8-flash", "gemini-4-hydrogen", "gemini-3.5-flash-lite"):
+            self.assertEqual(_normalize_gemini_model(supported), supported)
+
+    def test_gemini_fallback_models_default(self):
+        self.assertIsInstance(GEMINI_FALLBACK_MODELS, tuple)
+        self.assertIn("gemini-4-hydrogen", GEMINI_FALLBACK_MODELS)
+        self.assertIn("gemini-3.5-flash-lite", GEMINI_FALLBACK_MODELS)
 
 
 if __name__ == "__main__":

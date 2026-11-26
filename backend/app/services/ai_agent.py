@@ -8,6 +8,7 @@ Provayder .env orqali tanlanadi:
 """
 
 import json
+import time
 
 import httpx
 
@@ -16,13 +17,17 @@ from ..config import (
     ANTHROPIC_API_KEY,
     CLAUDE_MODEL,
     GEMINI_API_KEY,
+    GEMINI_FALLBACK_MODELS,
     GEMINI_MODEL,
     GOOGLE_CLOUD_LOCATION,
     GOOGLE_CLOUD_PROJECT,
     GOOGLE_SERVICE_ACCOUNT_JSON,
     VERTEX_GEMINI_MODEL,
 )
+from ..utils import safe_print
 from .content_quality import normalize_analysis
+
+_TRANSIENT_HTTP_STATUSES = frozenset({429, 500, 502, 503, 504})
 
 SYSTEM_PROMPT = """**Rol:** Sen jahon futboli bo'yicha yetakchi, tajribali o'zbek sport jurnalisti va tahlilchisisan.
 
@@ -145,18 +150,46 @@ def _validate(analysis: dict) -> dict:
     return normalize_analysis(analysis)
 
 
+def _extract_response_text(data: dict, provider_label: str) -> str:
+    """Google generateContent javobidan haqiqiy matn qismini ajratadi (thought qismlarini tashlab)."""
+    try:
+        parts = data["candidates"][0]["content"]["parts"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise RuntimeError(
+            f"{provider_label} javobi kutilmagan formatda: {json.dumps(data)[:300]}"
+        ) from exc
+
+    if not isinstance(parts, list):
+        raise RuntimeError(
+            f"{provider_label} javobi kutilmagan formatda: {json.dumps(data)[:300]}"
+        )
+
+    for part in parts:
+        if (
+            isinstance(part, dict)
+            and not part.get("thought")
+            and isinstance(part.get("text"), str)
+            and part["text"].strip()
+        ):
+            return part["text"]
+
+    raise RuntimeError(
+        f"{provider_label} javobida matn topilmadi: {json.dumps(data)[:300]}"
+    )
+
+
 def _analyze_with_gemini(user_text: str) -> dict:
-    """Gemini API (generateContent) — strukturali JSON javob bilan."""
+    """Gemini API (generateContent) — strukturali JSON javob va zaxira modellar bilan."""
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY sozlanmagan")
 
     # Gemini responseSchema OpenAPI kichik to'plami — additionalProperties kerak emas
     schema = _google_schema()
+    models_to_try = [GEMINI_MODEL]
+    for fallback_model in GEMINI_FALLBACK_MODELS:
+        if fallback_model not in models_to_try:
+            models_to_try.append(fallback_model)
 
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{GEMINI_MODEL}:generateContent"
-    )
     payload = {
         "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": [{"role": "user", "parts": [{"text": user_text}]}],
@@ -167,21 +200,43 @@ def _analyze_with_gemini(user_text: str) -> dict:
         },
     }
 
-    response = httpx.post(
-        url,
-        json=payload,
-        headers={"x-goog-api-key": GEMINI_API_KEY},
-        timeout=120,
-    )
-    if response.status_code != 200:
-        raise RuntimeError(f"Gemini API xatosi {response.status_code}: {response.text[:300]}")
+    last_error = None
+    for idx, model_name in enumerate(models_to_try):
+        url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model_name}:generateContent"
+        )
+        try:
+            response = httpx.post(
+                url,
+                json=payload,
+                headers={"x-goog-api-key": GEMINI_API_KEY},
+                timeout=60,
+            )
+        except (httpx.TimeoutException, httpx.RequestError) as exc:
+            last_error = f"Gemini tarmoq xatosi ({model_name}): {exc}"
+            if idx + 1 < len(models_to_try):
+                time.sleep(1)
+            continue
 
-    data = response.json()
-    try:
-        text = data["candidates"][0]["content"]["parts"][0]["text"]
-    except (KeyError, IndexError):
-        raise RuntimeError(f"Gemini javobi kutilmagan formatda: {json.dumps(data)[:300]}")
-    return json.loads(text)
+        if response.status_code == 200:
+            text = _extract_response_text(response.json(), "Gemini")
+            return json.loads(text)
+
+        if response.status_code in _TRANSIENT_HTTP_STATUSES or response.status_code == 404:
+            last_error = (
+                f"Gemini API xatosi ({model_name}) {response.status_code}: "
+                f"{response.text[:300]}"
+            )
+            if idx + 1 < len(models_to_try):
+                time.sleep(1)
+            continue
+
+        raise RuntimeError(
+            f"Gemini API xatosi ({model_name}) {response.status_code}: {response.text[:300]}"
+        )
+
+    raise RuntimeError(last_error or "Gemini API orqali tahlil qilib bo'lmadi")
 
 
 _vertex_credentials = None
@@ -218,7 +273,7 @@ def _analyze_with_vertex(user_text: str) -> dict:
 
     schema = _google_schema()
     models_to_try = [VERTEX_GEMINI_MODEL]
-    for fallback_model in ("gemini-3.7-flash", "gemini-2.5-flash"):
+    for fallback_model in ("gemini-3.8-flash", "gemini-4-hydrogen", "gemini-3.5-flash-lite"):
         if fallback_model not in models_to_try:
             models_to_try.append(fallback_model)
 
@@ -246,12 +301,8 @@ def _analyze_with_vertex(user_text: str) -> dict:
             timeout=120,
         )
         if response.status_code == 200:
-            data = response.json()
-            try:
-                text = data["candidates"][0]["content"]["parts"][0]["text"]
-                return json.loads(text)
-            except (KeyError, IndexError):
-                raise RuntimeError(f"Vertex AI javobi kutilmagan formatda: {json.dumps(data)[:300]}")
+            text = _extract_response_text(response.json(), "Vertex AI")
+            return json.loads(text)
         last_error = f"Vertex AI xatosi ({model_name}) {response.status_code}: {response.text[:300]}"
 
     raise RuntimeError(last_error or "Vertex AI orqali tahlil qilib bo'lmadi")
@@ -306,7 +357,15 @@ def analyze_news(title: str, content: str, url: str = "", source: str = "") -> d
     if AI_PROVIDER == "claude":
         analysis = _analyze_with_claude(user_text)
     elif AI_PROVIDER == "vertex":
-        analysis = _analyze_with_vertex(user_text)
+        try:
+            analysis = _analyze_with_vertex(user_text)
+        except Exception as exc:
+            if not GEMINI_API_KEY:
+                raise
+            safe_print(
+                f"⚠️ Vertex AI ishlamadi ({type(exc).__name__}), Gemini API zaxirasiga o'tilmoqda..."
+            )
+            analysis = _analyze_with_gemini(user_text)
     else:
         analysis = _analyze_with_gemini(user_text)
 

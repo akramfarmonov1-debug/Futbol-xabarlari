@@ -11,8 +11,12 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: GEMINI_MODEL
+        value: "gemini-3.8-flash"
+      - key: GEMINI_FALLBACK_MODELS
+        value: "gemini-4-hydrogen,gemini-3.5-flash-lite"
       - key: AI_PROVIDER
-        value: "vertex"
+        value: "gemini"
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: "/etc/secrets/google-credentials.json"
       - key: GOOGLE_CLOUD_PROJECT

@@ -18,10 +18,17 @@ DATABASE_URL = pin_postgres_driver(
     os.getenv("DATABASE_URL", "sqlite:///./futbolxabar.db")
 )
 
+_DEPRECATED_GEMINI_MODELS = frozenset({
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3.7-flash",
+})
+
+
 def _normalize_gemini_model(value: str) -> str:
-    """Eski 3.7 standartini yangi 3.8 modeliga ko'taradi."""
-    model = (value or "").strip() or "gemini-3.8-flash"
-    if model == "gemini-3.7-flash":
+    """Eskirgan yoki yopilgan Gemini modellarini amaldagi 3.8 modeliga ko'taradi."""
+    model = (value or "").strip()
+    if not model or model in _DEPRECATED_GEMINI_MODELS:
         return "gemini-3.8-flash"
     return model
 
@@ -32,6 +39,14 @@ AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").strip().lower()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = _normalize_gemini_model(
     os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+)
+GEMINI_FALLBACK_MODELS = tuple(
+    model.strip()
+    for model in os.getenv(
+        "GEMINI_FALLBACK_MODELS",
+        "gemini-4-hydrogen,gemini-3.5-flash-lite",
+    ).split(",")
+    if model.strip()
 )
 
 # Render kabi Google Cloud'dan tashqaridagi serverlar uchun Vertex AI + ADC.
