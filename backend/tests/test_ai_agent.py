@@ -135,6 +135,35 @@ class GeminiFallbackTests(unittest.TestCase):
         sleep_mock.assert_called_once_with(1)
 
 
+class GeminiKeyRotationTests(unittest.TestCase):
+    def test_rotates_to_next_api_key_on_429(self):
+        payload_text = json.dumps(_sample_analysis())
+        used_keys = []
+
+        def fake_post(url, json=None, headers=None, timeout=None):
+            used_keys.append(headers["x-goog-api-key"])
+            if headers["x-goog-api-key"] == "key-0":
+                return _mock_response(429, "quota exceeded")
+            return _mock_response(
+                200,
+                {"candidates": [{"content": {"parts": [{"text": payload_text}]}}]},
+            )
+
+        with (
+            patch.object(ai_agent, "GEMINI_API_KEY", "key-0"),
+            patch.object(ai_agent, "GEMINI_EXTRA_API_KEYS", ("key-1", "key-0")),
+            patch.object(ai_agent, "GEMINI_MODEL", "gemini-3.8-flash"),
+            patch.object(ai_agent, "GEMINI_FALLBACK_MODELS", ("gemini-4-hydrogen",)),
+            patch.object(ai_agent.time, "sleep"),
+            patch.object(ai_agent, "safe_print"),
+            patch.object(ai_agent.httpx, "post", side_effect=fake_post),
+        ):
+            result = ai_agent._analyze_with_gemini("Arsenal won 2-0")
+
+        self.assertEqual(used_keys, ["key-0", "key-1"])
+        self.assertEqual(result["kategoriya"], "premyer-liga")
+
+
 class VertexToGeminiFallbackTests(unittest.TestCase):
     def test_analyze_news_falls_back_from_vertex_to_gemini_when_key_present(self):
         sample = _sample_analysis()

@@ -17,6 +17,7 @@ from ..config import (
     ANTHROPIC_API_KEY,
     CLAUDE_MODEL,
     GEMINI_API_KEY,
+    GEMINI_EXTRA_API_KEYS,
     GEMINI_FALLBACK_MODELS,
     GEMINI_MODEL,
     GOOGLE_CLOUD_LOCATION,
@@ -178,9 +179,36 @@ def _extract_response_text(data: dict, provider_label: str) -> str:
     )
 
 
+def _gemini_keys() -> list[str]:
+    """GEMINI_API_KEY va GEMINI_API_KEY1..3 — takrorlarsiz, tartib saqlangan."""
+    return list(
+        dict.fromkeys(
+            key for key in (GEMINI_API_KEY, *GEMINI_EXTRA_API_KEYS) if key
+        )
+    )
+
+
+def _post_gemini(url: str, payload: dict, keys: list[str]) -> httpx.Response:
+    """Kvota (429) tugasa navbatdagi API kalit bilan qayta urinadi."""
+    response = None
+    for index, key in enumerate(keys):
+        response = httpx.post(
+            url,
+            json=payload,
+            headers={"x-goog-api-key": key},
+            timeout=60,
+        )
+        if response.status_code != 429:
+            return response
+        if index + 1 < len(keys):
+            safe_print(f"⚠️ Gemini kvota (429): API kalit #{index + 2} ga o'tilmoqda...")
+    return response
+
+
 def _analyze_with_gemini(user_text: str) -> dict:
     """Gemini API (generateContent) — strukturali JSON javob va zaxira modellar bilan."""
-    if not GEMINI_API_KEY:
+    keys = _gemini_keys()
+    if not keys:
         raise RuntimeError("GEMINI_API_KEY sozlanmagan")
 
     # Gemini responseSchema OpenAPI kichik to'plami — additionalProperties kerak emas
@@ -207,12 +235,7 @@ def _analyze_with_gemini(user_text: str) -> dict:
             f"{model_name}:generateContent"
         )
         try:
-            response = httpx.post(
-                url,
-                json=payload,
-                headers={"x-goog-api-key": GEMINI_API_KEY},
-                timeout=60,
-            )
+            response = _post_gemini(url, payload, keys)
         except (httpx.TimeoutException, httpx.RequestError) as exc:
             last_error = f"Gemini tarmoq xatosi ({model_name}): {exc}"
             if idx + 1 < len(models_to_try):
@@ -360,7 +383,7 @@ def analyze_news(title: str, content: str, url: str = "", source: str = "") -> d
         try:
             analysis = _analyze_with_vertex(user_text)
         except Exception as exc:
-            if not GEMINI_API_KEY:
+            if not _gemini_keys():
                 raise
             safe_print(
                 f"⚠️ Vertex AI ishlamadi ({type(exc).__name__}), Gemini API zaxirasiga o'tilmoqda..."

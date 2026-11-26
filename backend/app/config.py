@@ -37,6 +37,15 @@ def _normalize_gemini_model(value: str) -> str:
 AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini").strip().lower()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# Kvota (429) tugaganda navbatdagi kalitga o'tish uchun qo'shimcha kalitlar.
+GEMINI_EXTRA_API_KEYS = tuple(
+    key
+    for key in (
+        os.getenv(name, "").strip()
+        for name in ("GEMINI_API_KEY1", "GEMINI_API_KEY2", "GEMINI_API_KEY3")
+    )
+    if key
+)
 GEMINI_MODEL = _normalize_gemini_model(
     os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 )
