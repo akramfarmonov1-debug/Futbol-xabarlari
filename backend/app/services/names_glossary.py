@@ -101,6 +101,7 @@ _add(("Carlo Ancelotti", "Karlo Anchelotti"), "Karlo Anchelotti")
 _add(("Pep Guardiola", "Pep Gvardiola"), "Pep Gvardiola")
 _add(("Mikel Arteta",), "Mikel Arteta")
 _add(("Arne Slot",), "Arne Slot")
+_add(("Mauricio Pochettino", "Maurisio Pochettino"), "Maurisio Pochettino")
 
 # --- O'zbekistonlik Futbolchilar & Murabbiylar ---
 _add(("Abdukodir Khusanov", "Abduqodir Xusanov", "Abduqodir Husanov"), "Abduqodir Husanov")

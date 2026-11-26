@@ -48,7 +48,7 @@ MEDIA = "{http://search.yahoo.com/mrss/}"
 CONTENT_NS = "{http://purl.org/rss/1.0/modules/content/}"
 DC = "{http://purl.org/dc/elements/1.1/}"
 
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; FutbolXabar/1.0; +https://futbolxabar.uz)"}
+HEADERS = {"User-Agent": "FutbolXabar/1.0 (+https://futbolxabar.uz)"}
 MAX_NEWS_AGE_DAYS = max(1, int(os.getenv("MAX_NEWS_AGE_DAYS", "3")))
 
 

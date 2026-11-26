@@ -201,5 +201,12 @@ class VertexToGeminiFallbackTests(unittest.TestCase):
                 ai_agent.analyze_news("Title", "Content")
 
 
+class PromptContractTests(unittest.TestCase):
+    def test_system_prompt_specifies_0_to_100_confidence_scale(self):
+        for field in ("football_confidence", "category_confidence", "fact_confidence"):
+            self.assertIn(field, ai_agent.SYSTEM_PROMPT)
+        self.assertIn("0 dan 100 gacha", ai_agent.SYSTEM_PROMPT)
+
+
 if __name__ == "__main__":
     unittest.main()

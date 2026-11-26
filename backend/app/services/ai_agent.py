@@ -62,7 +62,8 @@ SYSTEM_PROMPT = """**Rol:** Sen jahon futboli bo'yicha yetakchi, tajribali o'zbe
    chet elda o'ynayotgan o'zbek legionerlari haqidagi xabarga bir daraja yuqori baho qo'y —
    sayt auditoriyasi uchun ular jahon futbolining o'rtacha xabaridan muhimroq.
 9. **Teglar va Kategoriya:** "teglar" da 3-5 ta aniq nom, "kategoriya" da qat'iy ro'yxatdan mos slugni tanla.
-10. **Tuzilma va Dalillar:** Javobni qat'iy JSON formatida qaytar. "facts" dagi har bir fakt uchun "evidence" maydoniga manbadan aynan mos dalilni keltir."""
+10. **Tuzilma va Dalillar:** Javobni qat'iy JSON formatida qaytar. "facts" dagi har bir fakt uchun "evidence" maydoniga manbadan aynan mos dalilni keltir, "entities" da asosiy klub/futbolchi/turnir nomlarini ko'rsat, "event_key" ga qisqa lotin identifikator yoz (masalan: `ucl:sporting-man-utd`).
+11. **Ishonch baholari (0–100 shkalasi):** "football_confidence", "category_confidence" va "fact_confidence" maydonlariga **0 dan 100 gacha** butun son (foizda) qo'y — masalan: manbadan to'liq va shubhasiz tasdiqlansa `92–100`, qisman noaniq bo'lsa `70–89`, shubhali bo'lsa `0–69`. Bu uchala maydon uchun **aslo 1–5 shkalasini ishlatma** (1–5 faqat "ahamiyati" uchun)."""
 
 CATEGORY_SLUGS = [
     "transferlar", "premyer-liga", "la-liga", "seriya-a", "bundesliga",

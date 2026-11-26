@@ -399,8 +399,10 @@ def infer_category(text: str, current: str) -> str:
     )
     transfer_action = re.search(
         r"\b(?:sotib oldi|safiga qo'shildi|safiga qo‘shildi|"
-        r"o'tdi|o‘tdi|o'tishi|o‘tishi|imzoladi|shartnoma imzol|"
-        r"kelishuvga erish|taklif yubor|muzokara olib bor|ijaraga oldi|"
+        r"safiga qo'shmoqchi|safiga qo‘shmoqchi|"
+        r"(?:safiga|klubiga|jamoasiga)\s+o'tdi|(?:safiga|klubiga|jamoasiga)\s+o‘tdi|"
+        r"(?:safiga|klubiga|jamoasiga)\s+o'tishi|(?:safiga|klubiga|jamoasiga)\s+o‘tishi|"
+        r"imzoladi|shartnoma imzol|kelishuvga erish|taklif yubor|muzokara olib bor|ijaraga oldi|"
         r"joins?|signs?|signed|agreed (?:a )?deal)\b",
         haystack,
         re.IGNORECASE,

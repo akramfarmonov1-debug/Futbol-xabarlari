@@ -307,6 +307,25 @@ class ContentQualityTests(unittest.TestCase):
             "transferlar",
         )
 
+    def test_match_report_with_otdi_is_not_classified_as_transfer(self):
+        self.assertEqual(
+            infer_category(
+                "Chempionlar ligasi uchrashuvi keskin o'tdi va Manchester Yunayted "
+                "Sporting bilan durang o'ynadi.",
+                "chempionlar-ligasi",
+            ),
+            "chempionlar-ligasi",
+        )
+
+    def test_transfer_target_is_classified_as_transfer(self):
+        self.assertEqual(
+            infer_category(
+                "Manchester Yunayted va Barselona yosh futbolchini o'z safiga qo'shmoqchi.",
+                "premyer-liga",
+            ),
+            "transferlar",
+        )
+
     def test_existing_cleanup_rejects_other_sports_and_fixes_title(self):
         engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(engine)
